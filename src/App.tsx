@@ -343,14 +343,10 @@ const PianoApp = ({ piano }: AppProps) => {
   };
 
   const playMidiSong = async () => {
-    console.log("or", originalMidi);
-
     if (!originalMidi) return;
 
     if (canvasState === "STOP") {
       setCanvasState("PLAY");
-
-      console.log("play");
 
       midiNotes.forEach((note, index, arr) => {
         const noteOnTimeout = currency(note.time).multiply(
