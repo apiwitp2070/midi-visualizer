@@ -29,38 +29,3 @@ code {
   top: 0;
   left: 0;
 }
-
-button {
-  width: 100%;
-  display: inline-block;
-  padding: 10px 20px;
-  font-size: 16px;
-  font-weight: bold;
-  color: white;
-  background-color: #007bff;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  text-align: center;
-  transition: background-color 0.3s;
-}
-
-button:active {
-  background-color: #204e80;
-}
-
-input {
-  padding: 10px;
-  margin: 10px 0;
-  box-sizing: border-box;
-  border: 2px solid #007bff;
-  border-radius: 5px;
-  font-size: 16px;
-  transition: border-color 0.3s, box-shadow 0.3s;
-}
-
-input:focus {
-  border-color: #0056b3;
-  box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
-  outline: none;
-}

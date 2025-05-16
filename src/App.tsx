@@ -1,11 +1,4 @@
-import {
-  ChangeEvent,
-  FormEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Midi } from "@tonejs/midi";
 import {
   useMIDIMessage,
@@ -17,8 +10,11 @@ import { config } from "./enums/config";
 import { MIDIMessage } from "@react-midi/hooks/dist/types";
 import { Note } from "@tonejs/midi/dist/Note";
 import currency from "currency.js";
-import axios from "axios";
 import Soundfont from "soundfont-player";
+import Upload from "./components/Upload";
+import Input from "./components/Input";
+import Button from "./components/Button";
+import Accordion from "./components/Accordion";
 
 interface NoteScoring {
   midi: number;
@@ -44,11 +40,6 @@ interface ScoreResult {
   miss: number;
 }
 
-interface User {
-  id: number;
-  email: string;
-}
-
 interface AppProps {
   ac: AudioContext;
   piano: Soundfont.Player;
@@ -59,11 +50,12 @@ const PianoApp = ({ piano }: AppProps) => {
   const { output } = useMIDIOutputs();
   const { noteOn, noteOff } = useMIDIOutput();
 
+  const [showSidebar, setShowSidebar] = useState(true);
+
   const [isRecording, setIsRecording] = useState(false);
   const [isLearning, setIsLearning] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [originalMidi, setOriginalMidi] = useState<Midi | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [defaultMidiBPM, setDefaultMidiBPM] = useState<number | null>(null);
@@ -79,16 +71,6 @@ const PianoApp = ({ piano }: AppProps) => {
 
   // MIDI player
   const [canvasState, setCanvasState] = useState<"STOP" | "PLAY">("STOP");
-
-  // authen
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [isLogin, setIsLogin] = useState<boolean>(() => {
-    return localStorage.getItem("token") !== null;
-  });
-  const [user, setUser] = useState<User>(() => {
-    return JSON.parse(localStorage.getItem("user") || "{}") as User;
-  });
 
   const delayOffset = 100;
   const canvasWidth = 800;
@@ -193,7 +175,6 @@ const PianoApp = ({ piano }: AppProps) => {
 
       console.log("midi", midi);
 
-      setOriginalFile(file);
       setOriginalMidi(midi);
       setDefaultMidiBPM(midi.header.tempos[0].bpm);
     }
@@ -347,27 +328,6 @@ const PianoApp = ({ piano }: AppProps) => {
         ...scoreResult,
       });
 
-      // upload score
-      axios.defaults.baseURL = "http://localhost:3003/api/";
-      axios.defaults.headers.common.Authorization = `Bearer ${localStorage.getItem(
-        "token"
-      )}`;
-      axios.defaults.headers.post["Access-Control-Allow-Origin"] = "*";
-
-      const total = Object.values(scoreResult).reduce(
-        (acc, value) => acc + value,
-        0
-      );
-
-      await axios
-        .post("score", {
-          total,
-          totalScore: score,
-          ...scoreResult,
-          song: originalFile?.name?.split(".mid")?.[0] || "Test",
-        })
-        .catch((err) => console.log("submit score error:", err));
-
       // visualize frontend
       setLatestPlayedNotes(testResult);
     } else {
@@ -383,10 +343,14 @@ const PianoApp = ({ piano }: AppProps) => {
   };
 
   const playMidiSong = async () => {
+    console.log("or", originalMidi);
+
     if (!originalMidi) return;
 
     if (canvasState === "STOP") {
       setCanvasState("PLAY");
+
+      console.log("play");
 
       midiNotes.forEach((note, index, arr) => {
         const noteOnTimeout = currency(note.time).multiply(
@@ -456,146 +420,155 @@ const PianoApp = ({ piano }: AppProps) => {
     }
   };
 
-  // authen
-
-  const handleLogin = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    try {
-      axios.defaults.baseURL = "http://localhost:3003/api/";
-      const response = await axios.post("auth/login", {
-        email,
-        password,
-      });
-      console.log("res", response);
-
-      const token = response.data.token;
-      const user = response.data.user;
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-
-      setUser(user);
-    } catch (err) {
-      console.log("login error:", err);
-    }
-  };
-
-  const handleLogout = (): void => {
-    localStorage.removeItem("token");
-    setIsLogin(false);
-  };
-
   return (
-    <div>
-      {isLogin ? (
-        <div>
-          <p>Hello {user.email}!</p>
-          <button onClick={handleLogout}>Logout</button>
-        </div>
-      ) : (
-        <form onSubmit={handleLogin}>
-          <h3>Login</h3>
-          <span>
-            <label>Email:</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </span>
-          <span>
-            <label>Password:</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </span>
-          <button type="submit">Login</button>
-        </form>
-      )}
-      <div style={{ display: "flex" }}>
-        <div className="px-4">
-          <h1>MIDI File</h1>
-          <input type="file" onChange={handleFileUpload} />
-
-          <div>
-            <h2>Play MIDI</h2>
-            <div style={{ paddingBottom: 10 }}>
-              Tempo:
-              <input
-                defaultValue={1}
-                onChange={onChangeTempo}
-                placeholder="Enter number (e.g. 100)"
-                style={{ marginInline: 8, width: 100 }}
-              />
-              x<div>(enter number (e.g. 1x, 2x, 0.5x))</div>
-            </div>
-            <button onClick={playMidiSong}>
-              {canvasState === "PLAY" ? "Stop" : "Play"} MIDI
-            </button>
+    <div className="flex h-full relative">
+      <div
+        className={`
+          absolute top-0 left-0 h-full w-[360px] pb-4 border-r border-gray-300
+          transform transition-transform duration-500 ease-in-out overflow-y-scroll
+          ${showSidebar ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <div className="p-4 flex flex-col gap-8">
+          <div className="flex flex-col gap-2">
+            <b>Select MIDI File</b>
+            <Upload onChange={handleFileUpload} />
           </div>
 
-          <div>
-            <h2>Learning</h2>
-            <button disabled={!output} onClick={toggleLearning}>
-              {isLearning ? "Stop" : "Start"} Learning
-            </button>
-            {!output && <p>Connect your MIDI device to use this feature</p>}
-            <h2>Test:</h2>
-            {startTime && <div>Start test at: {startTime}</div>}
-            <button disabled={!output} onClick={() => handleToggleRecordMidi()}>
-              {isRecording ? "Stop" : "Start"} the Test
-            </button>
-            {!output && <p>Connect your MIDI device to use this feature</p>}
-            {score && (
-              <>
-                <h2>Your score:</h2>
-                <div>
-                  TOTAL: {score.total} / {firstTrackNotes.length * 4}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <b>Play MIDI</b>
+              <div className="flex gap-2 items-center">
+                <p>Tempo:</p>
+                <div className="w-1/2">
+                  <Input
+                    defaultValue={1}
+                    placeholder="1"
+                    onChange={onChangeTempo}
+                  />
                 </div>
-                <div>Perfect: {score.perfect}</div>
-                <div>Early: {score.early}</div>
-                <div>Late: {score.late}</div>
-                <div>Miss: {score.miss}</div>
-
-                <div className="pt-4">
-                  {latestPLayedNotes?.map((note) => (
-                    <div key={note.time}>
-                      <div className="font-semibold pt-2">
-                        Note: {note.name} | Score: {note.score}
-                      </div>
-                      Timing: {note.timingResult} | Duration:{" "}
-                      {note.durationResult}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          <div>
-            <h2>Record and Export</h2>
-            <button
-              disabled={!output}
-              onClick={() => handleToggleRecordMidi("export")}
-            >
-              {isExporting ? "Stop" : "Start"} Record MIDI
-            </button>
-            {!output && <p>Connect your MIDI device to use this feature</p>}
-          </div>
-        </div>
-
-        <div>
-          {originalMidi && (
-            <div style={{ display: "flex" }}>
-              <MidiVisualizer canvasState={canvasState} notes={midiNotes} />
-              <div className="w-[400px]">
-                <pre>{JSON.stringify(originalMidi, null, 2)}</pre>
+                <p>x</p>
+              </div>
+              <div className="text-slate-500">
+                Enter number (for example: 1x, 2x, 0.5x)
               </div>
             </div>
+
+            <Button onClick={playMidiSong}>
+              {canvasState === "PLAY" ? "Stop" : "Play"} MIDI
+            </Button>
+          </div>
+
+          <div className="w-full h-[1px] bg-slate-400" />
+
+          <Accordion id="ac-learning" title="Learning">
+            <div className="flex flex-col gap-2">
+              <Button disabled={!output} onClick={toggleLearning}>
+                {isLearning ? "Stop" : "Start"} Learning
+              </Button>
+              {!output && (
+                <p className="text-slate-500">
+                  Connect your MIDI device to use this feature
+                </p>
+              )}
+            </div>
+          </Accordion>
+
+          <Accordion id="ac-test" title="Test">
+            <div className="flex flex-col gap-2">
+              {startTime && <div>Start test at: {startTime}</div>}
+              <Button
+                disabled={!output}
+                onClick={() => handleToggleRecordMidi()}
+              >
+                {isRecording ? "Stop" : "Start"} the Test
+              </Button>
+              {!output && (
+                <p className="text-slate-500">
+                  Connect your MIDI device to use this feature
+                </p>
+              )}
+            </div>
+          </Accordion>
+
+          {score && (
+            <>
+              <h2>Your score:</h2>
+              <div>
+                TOTAL: {score.total} / {firstTrackNotes.length * 4}
+              </div>
+              <div>Perfect: {score.perfect}</div>
+              <div>Early: {score.early}</div>
+              <div>Late: {score.late}</div>
+              <div>Miss: {score.miss}</div>
+
+              <div className="pt-4">
+                {latestPLayedNotes?.map((note) => (
+                  <div key={note.time}>
+                    <div className="font-semibold pt-2">
+                      Note: {note.name} | Score: {note.score}
+                    </div>
+                    Timing: {note.timingResult} | Duration:{" "}
+                    {note.durationResult}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
+
+          <Accordion id="sc-rec" title="Record and export as MIDI file">
+            <div className="flex flex-col gap-2">
+              <Button
+                disabled={!output}
+                onClick={() => handleToggleRecordMidi("export")}
+              >
+                {isExporting ? "Stop" : "Start"} Record MIDI
+              </Button>
+              {!output && (
+                <p className="text-slate-500">
+                  Connect your MIDI device to use this feature
+                </p>
+              )}
+            </div>
+          </Accordion>
+
+          {originalMidi && (
+            <Accordion id="ac-json" title="JSON">
+              <div className="overflow-auto text-xs">
+                <pre>{JSON.stringify(originalMidi, null, 2)}</pre>
+              </div>
+            </Accordion>
+          )}
+        </div>
+      </div>
+
+      <button
+        onClick={() => setShowSidebar((prev) => !prev)}
+        className={`
+          absolute top-0 z-20 transition-all duration-500 ease-in-out
+          ${showSidebar ? "left-[360px]" : "left-0"}
+          px-2 h-8 bg-gray-100 text-sm
+        `}
+      >
+        {!showSidebar && "Menu"} ☰
+      </button>
+
+      <div
+        className={`
+          flex-1 overflow-x-auto transition-all duration-500 ease-in-out my-6 mr-6
+          ${showSidebar ? "ml-[384px]" : "ml-6"}`}
+      >
+        <div className="h-full">
+          <div className="flex justify-center min-w-[900px] w-full">
+            {originalMidi ? (
+              <div className="flex">
+                <MidiVisualizer canvasState={canvasState} notes={midiNotes} />
+              </div>
+            ) : (
+              <div className="flex h-full items-center justify-center bg-gray-200">
+                Import MIDI file to display the visualizer
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
