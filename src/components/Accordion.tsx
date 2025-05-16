@@ -34,7 +34,7 @@ export default function Accordion({ id, title, children }: AccordionProps) {
         </label>
 
         <div className="max-h-0 overflow-y-scroll transition-all duration-300 peer-checked:max-h-96 p-0 peer-checked:py-4 bg-white">
-          <p className="text-gray-700">{children}</p>
+          {children}
         </div>
       </div>
       <div className="w-full h-[1px] bg-slate-400 mt-6" />

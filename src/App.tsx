@@ -425,14 +425,14 @@ const PianoApp = ({ piano }: AppProps) => {
           ${showSidebar ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="p-4 flex flex-col gap-8">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-4">
             <b>Select MIDI File</b>
             <Upload onChange={handleFileUpload} />
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <b>Play MIDI</b>
+            <div className="flex flex-col gap-4">
+              <b>MIDI Settings</b>
               <div className="flex gap-2 items-center">
                 <p>Tempo:</p>
                 <div className="w-1/2">
@@ -529,8 +529,8 @@ const PianoApp = ({ piano }: AppProps) => {
 
           {originalMidi && (
             <Accordion id="ac-json" title="JSON">
-              <div className="overflow-auto text-xs">
-                <pre>{JSON.stringify(originalMidi, null, 2)}</pre>
+              <div className="overflow-auto text-xs whitespace-pre-wrap">
+                {JSON.stringify(originalMidi, null, 2)}
               </div>
             </Accordion>
           )}
@@ -554,13 +554,13 @@ const PianoApp = ({ piano }: AppProps) => {
           ${showSidebar ? "ml-[384px]" : "ml-6"}`}
       >
         <div className="h-full">
-          <div className="flex justify-center min-w-[900px] w-full">
+          <div className="flex justify-center min-w-[900px] w-full h-full">
             {originalMidi ? (
               <div className="flex">
                 <MidiVisualizer canvasState={canvasState} notes={midiNotes} />
               </div>
             ) : (
-              <div className="flex h-full items-center justify-center bg-gray-200">
+              <div className="flex w-full h-full items-center justify-center bg-gray-200">
                 Import MIDI file to display the visualizer
               </div>
             )}
