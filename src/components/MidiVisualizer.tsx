@@ -59,7 +59,10 @@ const MidiVisualizer = ({ canvasState, notes }: Props) => {
       ctx.font = "11px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(note.name, endX + (startX - endX) / 2, y + noteHeight / 2);
+
+      if (endX - startX > 30) {
+        ctx.fillText(note.name, endX + (startX - endX) / 2, y + noteHeight / 2);
+      }
     }
 
     function draw(ctx: CanvasRenderingContext2D, currentTime: number) {

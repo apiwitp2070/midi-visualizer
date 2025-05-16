@@ -443,7 +443,7 @@ const PianoApp = ({ piano }: AppProps) => {
                   <Input
                     defaultValue={1}
                     placeholder="1"
-                    onChange={onChangeTempo}
+                    onBlur={onChangeTempo}
                   />
                 </div>
                 <p>x</p>
