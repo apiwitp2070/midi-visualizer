@@ -42,9 +42,11 @@ const MidiVisualizer = () => {
         width -
         config.noteStartOffset -
         (currentTime - note.time) * pixelsPerSecond;
+
       if (startX < 0 - note.duration * pixelsPerSecond) return;
 
       const endX = startX + note.duration * pixelsPerSecond;
+
       const y =
         height -
         (note.midi - (config.startMidi - 1)) * (noteHeight + noteSpacing);
@@ -121,61 +123,6 @@ const MidiVisualizer = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasState, JSON.stringify(notes)]);
 
-  const renderPianoKeys = () => {
-    const keys = [];
-    const startMidi = config.startMidi;
-    const endMidi = config.endMidi;
-    const keyHeight = config.laneHeight;
-
-    for (let midi = startMidi; midi <= endMidi; midi++) {
-      const note = midiToNoteName(midi);
-      const isActive = activeNotes.has(midi);
-
-      keys.push(
-        <div
-          key={midi}
-          style={{
-            width: 50,
-            height: keyHeight,
-            border: "1px solid black",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "12px",
-            boxSizing: "border-box",
-            backgroundColor: isActive ? "#d0d0d0" : "white",
-          }}
-        >
-          {note}
-        </div>
-      );
-    }
-
-    keys.reverse();
-
-    return keys;
-  };
-
-  const midiToNoteName = (midi: number) => {
-    const noteNames = [
-      "C",
-      "C#",
-      "D",
-      "D#",
-      "E",
-      "F",
-      "F#",
-      "G",
-      "G#",
-      "A",
-      "A#",
-      "B",
-    ];
-    const octave = Math.floor((midi - 12) / 12);
-    const note = noteNames[midi % 12];
-    return `${note}${octave}`;
-  };
-
   if (!originalMidi)
     return (
       <div className="flex w-full h-full items-center justify-center bg-gray-200">
@@ -185,7 +132,7 @@ const MidiVisualizer = () => {
 
   return (
     <div className="flex">
-      <div className="flex flex-col">{renderPianoKeys()}</div>
+      <div className="flex flex-col">{renderPianoKeys(activeNotes)}</div>
       <div className="canvas-container">
         <canvas
           ref={canvasRef}
@@ -199,3 +146,67 @@ const MidiVisualizer = () => {
 };
 
 export default MidiVisualizer;
+
+// helper
+
+const renderPianoKeys = (activeNotes: Set<unknown>) => {
+  const keys = [];
+  const startMidi = config.startMidi;
+  const endMidi = config.endMidi;
+  const keyHeight = config.laneHeight;
+
+  for (let midi = startMidi; midi <= endMidi; midi++) {
+    const note = midiToNoteName(midi);
+    const isActive = activeNotes.has(midi);
+
+    const border: Record<string, string> = { borderBottom: "1px solid black" };
+
+    if (midi === endMidi) {
+      border.borderTop = "1px solid black";
+    }
+
+    keys.push(
+      <div
+        key={midi}
+        style={{
+          width: 50,
+          height: keyHeight,
+          borderInline: "1px solid black",
+          ...border,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "12px",
+          boxSizing: "border-box",
+          backgroundColor: isActive ? "#d0d0d0" : "white",
+        }}
+      >
+        {note}
+      </div>
+    );
+  }
+
+  keys.reverse();
+
+  return keys;
+};
+
+const midiToNoteName = (midi: number) => {
+  const noteNames = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B",
+  ];
+  const octave = Math.floor((midi - 12) / 12);
+  const note = noteNames[midi % 12];
+  return `${note}${octave}`;
+};

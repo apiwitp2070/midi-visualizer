@@ -33,7 +33,7 @@ export default function Accordion({ id, title, children }: AccordionProps) {
           </svg>
         </label>
 
-        <div className="max-h-0 overflow-y-scroll transition-all duration-300 peer-checked:max-h-96 p-0 peer-checked:py-4 bg-white">
+        <div className="max-h-0 overflow-y-auto transition-all duration-300 peer-checked:max-h-96 p-0 peer-checked:py-4 bg-white">
           {children}
         </div>
       </div>

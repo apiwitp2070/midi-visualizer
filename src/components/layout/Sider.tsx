@@ -13,6 +13,7 @@ const Sider = ({ children }: AppLayoutProps) => {
       <div
         className={cn(
           "h-full pb-4 border-r border-gray-300 transition-all duration-500 ease-in-out overflow-y-scroll overflow-x-hidden",
+          "scroll-hidden",
           showSidebar ? "w-[360px]" : "w-0"
         )}
       >

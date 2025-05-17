@@ -13,8 +13,6 @@ const PianoApp = () => {
         <MidiUpload />
         <MidiSetting />
 
-        <div className="w-full h-[1px] bg-slate-400" />
-
         <MidiLearning />
         <MidiRecord />
         <MidiJsonView />

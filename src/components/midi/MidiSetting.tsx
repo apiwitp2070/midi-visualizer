@@ -77,8 +77,6 @@ export default function MidiSetting() {
     }
   };
 
-  console.log("render setting");
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4">
@@ -95,7 +93,11 @@ export default function MidiSetting() {
         </div>
       </div>
 
-      <Button onClick={playMidiSong}>
+      <Button
+        onClick={playMidiSong}
+        disabled={!originalMidi}
+        className={canvasState === "PLAY" ? "bg-red-400" : ""}
+      >
         {canvasState === "PLAY" ? "Stop" : "Play"} MIDI
       </Button>
     </div>
