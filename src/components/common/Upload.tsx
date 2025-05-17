@@ -1,3 +1,4 @@
+import { cn } from "@/utils/cn";
 import { useState } from "react";
 
 interface UploadProps extends React.InputHTMLAttributes<HTMLInputElement> {}
@@ -48,8 +49,8 @@ export default function Upload({ ...props }: UploadProps) {
         multiple
         type="file"
         id="File"
-        className="sr-only"
         {...props}
+        className={cn("sr-only", props.className)}
         onChange={handleChange}
       />
     </label>

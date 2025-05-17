@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { config } from "../enums/config";
+import { config } from "@/enums/config";
 import { Note } from "@tonejs/midi/dist/Note";
+import { useMidiVisualization } from "@/context/MidiVisualizeContext";
 
-interface Props {
-  canvasState: "PLAY" | "STOP";
-  notes: Note[];
-}
+const MidiVisualizer = () => {
+  const {
+    originalMidi,
+    canvasState,
+    midiNotes: notes,
+  } = useMidiVisualization();
 
-const MidiVisualizer = ({ canvasState, notes }: Props) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const [activeNotes, setActiveNotes] = useState(new Set());
@@ -174,16 +176,16 @@ const MidiVisualizer = ({ canvasState, notes }: Props) => {
     return `${note}${octave}`;
   };
 
-  return (
-    <div style={{ display: "flex" }}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        {renderPianoKeys()}
+  if (!originalMidi)
+    return (
+      <div className="flex w-full h-full items-center justify-center bg-gray-200">
+        Import MIDI file to display the visualizer
       </div>
+    );
+
+  return (
+    <div className="flex">
+      <div className="flex flex-col">{renderPianoKeys()}</div>
       <div className="canvas-container">
         <canvas
           ref={canvasRef}
