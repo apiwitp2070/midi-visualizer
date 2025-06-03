@@ -36,22 +36,26 @@ export default function MidiSetting() {
         setTimeout(() => {
           piano.play(note.name, note.time - songDelay, {
             duration: note.duration,
+            gain: note.velocity,
+            release: 1,
           });
 
+          // for MIDI device
           if (output && noteOff && noteOn) {
             noteOn(note.midi, { velocity: note.velocity * 127 });
 
             setTimeout(() => {
               noteOff(note.midi, { velocity: note.velocity * 127 });
+            }, noteOffTimeout);
+          }
 
-              if (index === arr.length - 1) {
-                // finish playing
-                setTimeout(() => {
-                  console.log("song finished");
-                  setCanvasState("STOP");
-                  piano.stop();
-                }, 1000);
-              }
+          // finish playing
+          if (index === arr.length - 1) {
+            setTimeout(() => {
+              setTimeout(() => {
+                setCanvasState("STOP");
+                piano.stop();
+              }, 1000);
             }, noteOffTimeout);
           }
         }, songDelay + noteOnTimeout);
