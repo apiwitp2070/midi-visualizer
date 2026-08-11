@@ -1,44 +1,8 @@
 import { Midi } from "@tonejs/midi";
-import { Note } from "@tonejs/midi/dist/Note";
-import { createContext, useContext, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { config } from "../enums/config";
 import { NoteScoring, ScoreResult, NoteScore } from "../interfaces/note";
-
-interface MidiVisualizerContextType {
-  isRecording: boolean;
-  setIsRecording: React.Dispatch<React.SetStateAction<boolean>>;
-  isLearning: boolean;
-  setIsLearning: React.Dispatch<React.SetStateAction<boolean>>;
-  isExporting: boolean;
-  setIsExporting: React.Dispatch<React.SetStateAction<boolean>>;
-  originalMidi: Midi | null;
-  setOriginalMidi: React.Dispatch<React.SetStateAction<Midi | null>>;
-  startTime: number | null;
-  setStartTime: React.Dispatch<React.SetStateAction<number | null>>;
-  defaultMidiBPM: number | null;
-  setDefaultMidiBPM: React.Dispatch<React.SetStateAction<number | null>>;
-  currentNotes: NoteScoring[][];
-  setCurrentNotes: React.Dispatch<React.SetStateAction<NoteScoring[][]>>;
-  noteOnStack: NoteScoring[];
-  setNoteOnStack: React.Dispatch<React.SetStateAction<NoteScoring[]>>;
-  noteOffStack: NoteScoring[];
-  setNoteOffStack: React.Dispatch<React.SetStateAction<NoteScoring[]>>;
-  score: ScoreResult | null;
-  setScore: React.Dispatch<React.SetStateAction<ScoreResult | null>>;
-  latestPLayedNotes: NoteScore[] | undefined;
-  setLatestPlayedNotes: React.Dispatch<
-    React.SetStateAction<NoteScore[] | undefined>
-  >;
-  canvasState: "STOP" | "PLAY";
-  setCanvasState: React.Dispatch<React.SetStateAction<"STOP" | "PLAY">>;
-  midiNotes: Note[];
-  songDelay: number;
-  firstTrackNotes: Note[];
-}
-
-const MidiVisualizerContext = createContext<
-  MidiVisualizerContextType | undefined
->(undefined);
+import { MidiVisualizerContext } from "./MidiVisualizeContextValue";
 
 export const MidiVisualizerProvider = ({
   children,
@@ -139,12 +103,4 @@ export const MidiVisualizerProvider = ({
       {children}
     </MidiVisualizerContext.Provider>
   );
-};
-
-export const useMidiVisualization = () => {
-  const context = useContext(MidiVisualizerContext);
-  if (!context) {
-    throw new Error("useFeature must be used within a FeatureProvider");
-  }
-  return context;
 };

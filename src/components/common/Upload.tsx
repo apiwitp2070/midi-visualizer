@@ -1,7 +1,7 @@
 import { cn } from "@/utils/cn";
 import { useState } from "react";
 
-interface UploadProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+type UploadProps = React.InputHTMLAttributes<HTMLInputElement>;
 
 export default function Upload({ ...props }: UploadProps) {
   const [fileNames, setFileNames] = useState<string[]>([]);

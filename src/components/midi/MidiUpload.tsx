@@ -1,7 +1,7 @@
 import { ChangeEvent } from "react";
 import Upload from "@/components/common/Upload";
 import { Midi } from "@tonejs/midi";
-import { useMidiVisualization } from "@/context/MidiVisualizeContext";
+import { useMidiVisualization } from "@/context/useMidiVisualization";
 
 export default function MidiUpload() {
   const { setOriginalMidi, setDefaultMidiBPM } = useMidiVisualization();
