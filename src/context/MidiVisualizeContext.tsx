@@ -99,8 +99,8 @@ export const MidiVisualizerProvider = ({
   );
 
   return (
-    <MidiVisualizerContext.Provider value={value}>
+    <MidiVisualizerContext value={value}>
       {children}
-    </MidiVisualizerContext.Provider>
+    </MidiVisualizerContext>
   );
 };

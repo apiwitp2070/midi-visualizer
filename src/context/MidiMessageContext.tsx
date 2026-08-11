@@ -98,9 +98,9 @@ export const MidiMessageProvider = ({
   // helper function
 
   return (
-    <MidiMessageContext.Provider value={undefined}>
+    <MidiMessageContext value={undefined}>
       {children}
-    </MidiMessageContext.Provider>
+    </MidiMessageContext>
   );
 };
 

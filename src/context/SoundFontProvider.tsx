@@ -19,8 +19,8 @@ export const SoundFontProvider = ({
   );
 
   return (
-    <SoundfontContext.Provider value={value}>
+    <SoundfontContext value={value}>
       {children}
-    </SoundfontContext.Provider>
+    </SoundfontContext>
   );
 };
