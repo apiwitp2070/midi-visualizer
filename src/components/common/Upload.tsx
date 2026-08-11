@@ -18,7 +18,7 @@ export default function Upload({ ...props }: UploadProps) {
 
   return (
     <label
-      className="block rounded border border-gray-300 p-4 text-gray-900 shadow-sm sm:p-6 cursor-pointer"
+      className="block rounded-sm border border-gray-300 p-4 text-gray-900 shadow-xs sm:p-6 cursor-pointer"
       htmlFor="File"
     >
       <div className="flex items-center justify-center gap-4 font-medium">
