@@ -68,7 +68,9 @@ export default function MidiRecord() {
         if (!noteOffStack) return;
 
         const midiData = newMidi.toArray();
-        const blob = new Blob([midiData], { type: "audio/midi" });
+        const blob = new Blob([new Uint8Array(midiData)], {
+          type: "audio/midi",
+        });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
