@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { config } from "@/enums/config";
 import { Note } from "@tonejs/midi/dist/Note";
-import { useMidiVisualization } from "@/context/MidiVisualizeContext";
+import { useMidiVisualization } from "@/context/useMidiVisualization";
 
 const MidiVisualizer = () => {
   const {

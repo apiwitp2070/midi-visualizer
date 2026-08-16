@@ -1,5 +1,5 @@
 import { useMIDIOutputs } from "@react-midi/hooks";
-import { useMidiVisualization } from "@/context/MidiVisualizeContext";
+import { useMidiVisualization } from "@/context/useMidiVisualization";
 import Button from "@/components/common/Button";
 import { Midi } from "@tonejs/midi";
 import { NoteScore, NoteScoring } from "@/interfaces/note";
@@ -68,7 +68,9 @@ export default function MidiRecord() {
         if (!noteOffStack) return;
 
         const midiData = newMidi.toArray();
-        const blob = new Blob([midiData], { type: "audio/midi" });
+        const blob = new Blob([new Uint8Array(midiData)], {
+          type: "audio/midi",
+        });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -100,8 +102,8 @@ export default function MidiRecord() {
 
       const score = originalMidiNotes.reduce((acc, curr) => {
         let score = 0;
-        let timingResult = "";
-        let durationResult = "";
+        let timingResult: string;
+        let durationResult: string;
 
         const playedNote = newMidiNotes.find(
           (note: NoteScoring) =>

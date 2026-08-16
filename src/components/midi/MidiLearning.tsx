@@ -1,6 +1,6 @@
 import { useMIDIOutput, useMIDIOutputs } from "@react-midi/hooks";
 import Button from "@/components/common/Button";
-import { useMidiVisualization } from "@/context/MidiVisualizeContext";
+import { useMidiVisualization } from "@/context/useMidiVisualization";
 import Accordion from "@/components/common/Accordion";
 
 export default function MidiLearning() {

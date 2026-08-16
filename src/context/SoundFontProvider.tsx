@@ -1,17 +1,9 @@
-import { createContext, useContext, useMemo } from "react";
+import { useMemo } from "react";
 import Soundfont from "soundfont-player";
-
-interface SoundfontContextProps {
-  ac: AudioContext;
-  piano: Soundfont.Player;
-}
+import { SoundfontContext } from "./SoundFontContextValue";
 
 const ac = new AudioContext();
 const piano = await Soundfont.instrument(ac, "acoustic_grand_piano");
-
-const SoundfontContext = createContext<SoundfontContextProps | undefined>(
-  undefined
-);
 
 export const SoundFontProvider = ({
   children,
@@ -27,16 +19,8 @@ export const SoundFontProvider = ({
   );
 
   return (
-    <SoundfontContext.Provider value={value}>
+    <SoundfontContext value={value}>
       {children}
-    </SoundfontContext.Provider>
+    </SoundfontContext>
   );
-};
-
-export const useSoundFont = () => {
-  const context = useContext(SoundfontContext);
-  if (!context) {
-    throw new Error("useSoundFont must be used within a FeatureProvider");
-  }
-  return context;
 };

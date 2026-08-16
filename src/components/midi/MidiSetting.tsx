@@ -1,10 +1,10 @@
 import { ChangeEvent } from "react";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
-import { useMidiVisualization } from "@/context/MidiVisualizeContext";
+import { useMidiVisualization } from "@/context/useMidiVisualization";
 import currency from "currency.js";
 import { useMIDIOutputs, useMIDIOutput } from "@react-midi/hooks";
-import { useSoundFont } from "@/context/SoundFontProvider";
+import { useSoundFont } from "@/context/useSoundFont";
 
 export default function MidiSetting() {
   const { piano } = useSoundFont();

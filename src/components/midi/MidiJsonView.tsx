@@ -1,4 +1,4 @@
-import { useMidiVisualization } from "@/context/MidiVisualizeContext";
+import { useMidiVisualization } from "@/context/useMidiVisualization";
 import Accordion from "@/components/common/Accordion";
 
 export default function MidiJsonView() {

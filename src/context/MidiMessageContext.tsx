@@ -1,8 +1,8 @@
 import { useMIDIMessage, useMIDIOutput } from "@react-midi/hooks";
 import { MIDIMessage } from "@react-midi/hooks/dist/types";
 import { Note } from "@tonejs/midi/dist/Note";
-import { createContext, useCallback, useContext, useEffect } from "react";
-import { useMidiVisualization } from "./MidiVisualizeContext";
+import { createContext, useCallback, useEffect } from "react";
+import { useMidiVisualization } from "./useMidiVisualization";
 
 const MidiMessageContext = createContext<undefined>(undefined);
 
@@ -98,19 +98,12 @@ export const MidiMessageProvider = ({
   // helper function
 
   return (
-    <MidiMessageContext.Provider value={undefined}>
+    <MidiMessageContext value={undefined}>
       {children}
-    </MidiMessageContext.Provider>
+    </MidiMessageContext>
   );
 };
 
-export const useMidiMessage = () => {
-  const context = useContext(MidiMessageContext);
-  if (!context) {
-    throw new Error("useSoundFont must be used within a FeatureProvider");
-  }
-  return context;
-};
 
 // helper
 
