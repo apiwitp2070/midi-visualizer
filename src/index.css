@@ -19,89 +19,149 @@
    palette should only ever touch this file.
    --------------------------------------------------------------------------- */
 @theme {
-  /* -- Theme-variant: surfaces ------------------------------------------- */
-  --color-surface: #ffffff;
+  /* -- Typography --------------------------------------------------------
+   * Three roles. Display is used with restraint (wordmark, panel titles,
+   * the score headline); mono is reserved for data that should not shift
+   * width as it changes — note names, timings, BPM, scores. */
+  --font-display: "Archivo", "Archivo Narrow", "Helvetica Neue", sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+
+  /* -- Theme-variant: surfaces --------------------------------------------
+   * "Studio at night": warm ivory rather than the cool slate-on-white this
+   * replaced. The warmth is what separates the palette from a default
+   * Tailwind gray ramp. */
+  --color-surface: #faf8f5;
   --color-surface-raised: #ffffff;
-  --color-surface-sunken: #f1f5f9;
+  --color-surface-sunken: #f0ece5;
 
   /* -- Theme-variant: borders -------------------------------------------- */
-  --color-border: #cbd5e1;
-  --color-border-strong: #94a3b8;
+  --color-border: #ddd6ca;
+  --color-border-strong: #b3a894;
 
   /* -- Theme-variant: text ----------------------------------------------- */
-  --color-text: #0f172a;
-  /* Darkened from the previous slate-500 to clear 4.5:1 on --color-surface. */
-  --color-text-muted: #56637a;
-  --color-text-placeholder: #94a3b8;
+  --color-text: #1a1720;
+  /* Clears 4.5:1 on --color-surface. */
+  --color-text-muted: #6b6357;
+  --color-text-placeholder: #a39a8b;
 
-  /* -- Theme-variant: interactive ---------------------------------------- */
-  --color-accent: #3396ff;
+  /* -- Theme-variant: interactive ----------------------------------------
+   * Brass rather than a generic blue: it reads as instrument hardware, and
+   * sits opposite the note hues so notes stay the brightest thing on screen.
+   * The light-theme brass is darkened to clear 4.5:1 against white text. */
+  --color-accent: #9a6b0f;
   --color-accent-fg: #ffffff;
-  --color-danger: #e2544c;
+  --color-danger: #b3453c;
   --color-danger-fg: #ffffff;
-  --color-disabled: #d5dbe3;
+  --color-disabled: #e2dcd1;
   /* Disabled controls are WCAG-exempt, but this still clears 4.5:1 so the
      label stays readable rather than merely present. */
-  --color-disabled-fg: #5d6675;
+  --color-disabled-fg: #6b6357;
 
-  /* -- Theme-variant: piano keys ----------------------------------------- */
-  --color-key: #ffffff;
-  --color-key-active: #d0d0d0;
-  --color-key-border: #0f172a;
+  /* -- Theme-variant: piano keys ------------------------------------------
+   * Split from a single key/key-active pair so the keyboard can render real
+   * black and white keys. Active states are handled per-pitch in JS (the key
+   * lights in its own note color); these are the resting fills. */
+  --color-key-white: #fdfcfa;
+  --color-key-black: #23202b;
+  --color-key-border: #2a2530;
 
-  /* -- Theme-variant: visualizer lane striping --------------------------- */
-  --color-lane: #f9f9f9;
-  --color-lane-alt: #f2f2f2;
 
-  /* -- Theme-INVARIANT: note colors -------------------------------------- *
-   * These are the notes rendered on the canvas. They are deliberately the
-   * same in light and dark, so they are NOT repeated in `:root.dark`.
-   * Note fills are the "content" of the visualizer rather than chrome —
-   * keeping them stable means a piece looks the same whatever the theme.
-   *
-   * To grow into a multi-color scheme (per pitch class or per track, as
-   * other MIDI players do), add --color-note-1 ... --color-note-12 here and
-   * widen getNoteColor() in src/utils/themeColors.ts. That function is the
-   * only place that maps a note to a color, so nothing else needs to change.
-   */
-  --color-note: #6ca6e4;
-  --color-note-fg: #ffffff;
-  --color-note-stroke: #1e3a5f;
+  /* -- Theme-INVARIANT: note foreground ----------------------------------
+   * Used as a utility class on the lit key label, so it belongs in @theme.
+   * The note *fills* live in the :root block below — see the note there. */
+  --color-note-fg: #1a1014;
 }
 
+/* ---------------------------------------------------------------------------
+   Canvas-only tokens
+
+   These are read at runtime by src/utils/themeColors.ts (getComputedStyle) and
+   painted onto the canvas, never emitted as Tailwind utility classes. They are
+   declared here rather than in `@theme` deliberately: Tailwind v4 tree-shakes
+   `@theme` variables that no class references, which would drop them from the
+   build and leave the canvas silently falling back to the hardcoded defaults
+   in themeColors.ts.
+   --------------------------------------------------------------------------- */
 :root {
   color-scheme: light;
+
+  /* Lane striping. Banded by pitch class so the pattern repeats every octave
+     and lines up with the black keys; C is marked as the octave landmark. */
+  --color-lane: #efeae1;
+  --color-lane-alt: #e8e2d7;
+  --color-lane-c: #ddd4c5;
+
+  /* -- Theme-INVARIANT: note fills ---------------------------------------
+   * The notes rendered on the canvas. Deliberately identical in light and
+   * dark — note fills are the "content" of the visualizer rather than
+   * chrome, so a piece looks the same whatever the theme. Hence they are
+   * NOT repeated in the `:root.dark` block.
+   *
+   * One hue per pitch class, indexed by `midi % 12` in getNoteColor()
+   * (src/utils/themeColors.ts). Deliberately NOT a full rainbow: the ramp
+   * runs amber -> rose -> violet, an analogous sweep, so simultaneous notes
+   * read as a related family rather than as unrelated primaries.
+   *
+   * To colour by track instead, index this same ramp by track number in
+   * getNoteColor — that function is the only place a note becomes a colour.
+   */
+  --color-note-0: #f0b429;
+  --color-note-1: #e39320;
+  --color-note-2: #e8743c;
+  --color-note-3: #d55a45;
+  --color-note-4: #e05561;
+  --color-note-5: #e0457f;
+  --color-note-6: #c93f8e;
+  --color-note-7: #b545a4;
+  --color-note-8: #9a4bb0;
+  --color-note-9: #7d54ba;
+  --color-note-10: #6560bd;
+  --color-note-11: #4f6ec4;
+
+  /* The "now" line notes land on. Theme-invariant, like the notes. */
+  --color-playhead: #f5e6c8;
 }
 
-/* Dark overrides — theme-variant tokens only. Built on slate rather than pure
-   black, with text below pure white, to avoid halation on large dark areas. */
+/* Dark overrides — theme-variant tokens only. This is the primary theme: the
+   app is a media surface viewed for long stretches with a bright canvas at its
+   center, so the chrome recedes. Built on a warm ebony rather than pure black,
+   with text below pure white, to avoid halation on large dark areas. */
 :root.dark {
   color-scheme: dark;
 
-  --color-surface: #0f172a;
-  --color-surface-raised: #1e293b;
-  --color-surface-sunken: #0b1220;
+  --color-surface: #14131a;
+  --color-surface-raised: #1e1c26;
+  --color-surface-sunken: #0d0c11;
 
-  --color-border: #334155;
-  --color-border-strong: #64748b;
+  --color-border: #322e3d;
+  --color-border-strong: #4f4a5e;
 
-  --color-text: #e2e8f0;
-  --color-text-muted: #97a4b8;
-  --color-text-placeholder: #64748b;
+  --color-text: #ece8e1;
+  --color-text-muted: #a39c93;
+  --color-text-placeholder: #6b6478;
 
-  --color-accent: #4da3ff;
-  --color-accent-fg: #06213f;
-  --color-danger: #f0655d;
+  /* Brass can run brighter here — on ebony it reads as a lit lamp rather
+     than the muted hardware tone the light theme needs for contrast. */
+  --color-accent: #e8b64c;
+  --color-accent-fg: #241a05;
+  --color-danger: #e8695e;
   --color-danger-fg: #2b0b09;
-  --color-disabled: #2c3a4f;
-  --color-disabled-fg: #9aa6b8;
+  --color-disabled: #2a2733;
+  --color-disabled-fg: #8b8494;
 
-  --color-key: #cbd5e1;
-  --color-key-active: #7c8ba1;
-  --color-key-border: #0b1220;
+  /* Keys keep their real-world colors in both themes — a piano's white keys
+     are white. Only the shadow beneath them changes. */
+  --color-key-white: #e8e3d9;
+  --color-key-black: #16141c;
+  --color-key-border: #0a090d;
+  --color-key-shadow: #000000;
 
-  --color-lane: #131c30;
-  --color-lane-alt: #18223a;
+  /* Canvas-only (see the :root block above for why these live outside
+     @theme). Note fills and the playhead stay theme-invariant. */
+  --color-lane: #17161f;
+  --color-lane-alt: #1b1a24;
+  --color-lane-c: #262432;
 }
 
 /* Theme switching should be instantaneous.
@@ -125,11 +185,23 @@ body {
   margin: 0;
   background-color: var(--color-surface);
   color: var(--color-text);
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Honour a reduced-motion preference globally. The keyboard glow and the
+   sidebar slide are the only substantial motion in the app; both are purely
+   decorative, so removing them costs nothing functionally. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* For a scrollable container */
@@ -144,24 +216,26 @@ body {
 }
 
 code {
-  font-family:
-    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-family: var(--font-mono);
 }
 
+/* The note stage sits above the keyboard strip and takes the remaining
+ * vertical space. It is sized in JS from a ResizeObserver (see
+ * MidiVisualizer). Lane striping is painted by the canvas rather than a CSS
+ * gradient: lane columns must line up with the piano keys below them, and
+ * that geometry is derived at runtime from the container width, which a fixed
+ * background-size cannot track. */
 .canvas-container {
   position: relative;
-  width: 800px;
-  height: 915px;
-  background: linear-gradient(
-    to bottom,
-    var(--color-lane) 14px,
-    var(--color-lane-alt) 14px
-  );
-  background-size: 100% 30px; /* Adjust according to noteHeight and noteSpacing */
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  background-color: var(--color-lane);
+  overflow: hidden;
 }
 
 .canvas-element {
-  position: absolute;
-  top: 0;
-  left: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
 }

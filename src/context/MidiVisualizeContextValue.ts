@@ -32,6 +32,14 @@ export interface MidiVisualizerContextType {
   setCanvasState: React.Dispatch<React.SetStateAction<"STOP" | "PLAY">>;
   midiNotes: Note[];
   songDelay: number;
+  /** Reported by the visualizer once it knows how far a note falls. */
+  setTravelDistance: React.Dispatch<React.SetStateAction<number | null>>;
+  /**
+   * Whether the stage has reported its real height. Until it has, `songDelay`
+   * is not meaningful and playback must not start — scheduling audio against
+   * an unmeasured stage desyncs it from the canvas with no later correction.
+   */
+  hasMeasuredStage: boolean;
   firstTrackNotes: Note[];
 }
 

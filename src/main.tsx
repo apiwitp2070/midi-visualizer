@@ -13,17 +13,19 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider>
       <MIDIProvider>
-        <Header />
+        <SoundFontProvider>
+          <MidiVisualizerProvider>
+            <MidiMessageProvider>
+              {/* Header sits inside MidiVisualizerProvider so its status line
+                  can read the loaded file and playback state. */}
+              <Header />
 
-        <main className="h-[calc(100vh-48px)] bg-surface text-text">
-          <SoundFontProvider>
-            <MidiVisualizerProvider>
-              <MidiMessageProvider>
+              <main className="h-[calc(100dvh-48px)] bg-surface text-text">
                 <App />
-              </MidiMessageProvider>
-            </MidiVisualizerProvider>
-          </SoundFontProvider>
-        </main>
+              </main>
+            </MidiMessageProvider>
+          </MidiVisualizerProvider>
+        </SoundFontProvider>
       </MIDIProvider>
     </ThemeProvider>
   </React.StrictMode>

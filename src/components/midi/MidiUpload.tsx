@@ -20,10 +20,5 @@ export default function MidiUpload() {
     }
   };
 
-  return (
-    <div className="flex flex-col gap-4">
-      <b>Select MIDI File</b>
-      <Upload onChange={handleFileUpload} />
-    </div>
-  );
+  return <Upload accept=".mid,.midi,audio/midi" onChange={handleFileUpload} />;
 }

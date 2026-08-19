@@ -16,11 +16,15 @@ export default function MidiSetting() {
     setCanvasState,
     midiNotes,
     songDelay,
+    hasMeasuredStage,
     defaultMidiBPM,
   } = useMidiVisualization();
 
   const playMidiSong = async () => {
-    if (!originalMidi) return;
+    // songDelay is only meaningful once the stage has measured itself; playing
+    // before then schedules the audio against a stage height the canvas is not
+    // using, and nothing corrects the resulting offset.
+    if (!originalMidi || !hasMeasuredStage) return;
 
     if (canvasState === "STOP") {
       setCanvasState("PLAY");
@@ -81,30 +85,36 @@ export default function MidiSetting() {
     }
   };
 
+  const isPlaying = canvasState === "PLAY";
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-4">
-        <b>MIDI Settings</b>
-        <div className="flex gap-2 items-center">
-          <p>Tempo:</p>
-          <div className="w-1/2">
-            <Input defaultValue={1} placeholder="1" onBlur={onChangeTempo} />
-          </div>
-          <p>x</p>
-        </div>
-        <div className="text-text-muted">
-          Enter number (for example: 1x, 2x, 0.5x)
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-3">
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor="tempo" className="text-sm font-medium text-text">
+          Tempo
+        </label>
+        <div className="flex w-28 items-center gap-1.5">
+          <Input
+            id="tempo"
+            defaultValue={1}
+            placeholder="1"
+            onBlur={onChangeTempo}
+            className="text-right font-mono"
+          />
+          <span className="text-sm text-text-muted">×</span>
         </div>
       </div>
 
+      <p className="text-xs text-text-muted">
+        1 plays at the file's own tempo. 0.5 halves it, 2 doubles it.
+      </p>
+
       <Button
         onClick={playMidiSong}
-        disabled={!originalMidi}
-        className={
-          canvasState === "PLAY" ? "bg-danger text-danger-fg" : ""
-        }
+        disabled={!originalMidi || (!isPlaying && !hasMeasuredStage)}
+        variant={isPlaying ? "danger" : "primary"}
       >
-        {canvasState === "PLAY" ? "Stop" : "Play"} MIDI
+        {isPlaying ? "Stop" : "Play"}
       </Button>
     </div>
   );

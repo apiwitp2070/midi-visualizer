@@ -9,20 +9,47 @@ import type { Theme } from "@/context/ThemeContextValue";
  * truth for color rather than duplicating hex values in TypeScript.
  */
 
+/** One hue per pitch class, indexed by `midi % 12`. */
+const NOTE_TOKENS = Array.from(
+  { length: 12 },
+  (_, index) => `--color-note-${index}`
+);
+
 const CANVAS_TOKENS = {
-  note: "--color-note",
   noteFg: "--color-note-fg",
-  noteStroke: "--color-note-stroke",
+  playhead: "--color-playhead",
+  lane: "--color-lane",
+  laneAlt: "--color-lane-alt",
+  laneC: "--color-lane-c",
 } as const;
 
-export type ThemeColors = Record<keyof typeof CANVAS_TOKENS, string>;
+export type ThemeColors = Record<keyof typeof CANVAS_TOKENS, string> & {
+  /** Twelve pitch-class hues, index 0 = C. */
+  notes: string[];
+};
 
-/** Fallbacks matching the light values in index.css, used if a token is
- *  missing (e.g. the stylesheet has not applied yet on the very first paint). */
+/** Fallbacks matching the values in index.css, used if a token is missing
+ *  (e.g. the stylesheet has not applied yet on the very first paint). */
 const FALLBACKS: ThemeColors = {
-  note: "#6ca6e4",
-  noteFg: "#ffffff",
-  noteStroke: "#1e3a5f",
+  notes: [
+    "#f0b429",
+    "#e39320",
+    "#e8743c",
+    "#d55a45",
+    "#e05561",
+    "#e0457f",
+    "#c93f8e",
+    "#b545a4",
+    "#9a4bb0",
+    "#7d54ba",
+    "#6560bd",
+    "#4f6ec4",
+  ],
+  noteFg: "#1a1014",
+  playhead: "#f5e6c8",
+  lane: "#efeae1",
+  laneAlt: "#e8e2d7",
+  laneC: "#ddd4c5",
 };
 
 /**
@@ -56,21 +83,28 @@ export const readThemeColors = (theme: Theme): ThemeColors => {
     styles.getPropertyValue(token).trim() || fallback;
 
   return {
-    note: read(CANVAS_TOKENS.note, FALLBACKS.note),
+    notes: NOTE_TOKENS.map((token, index) =>
+      read(token, FALLBACKS.notes[index])
+    ),
     noteFg: read(CANVAS_TOKENS.noteFg, FALLBACKS.noteFg),
-    noteStroke: read(CANVAS_TOKENS.noteStroke, FALLBACKS.noteStroke),
+    playhead: read(CANVAS_TOKENS.playhead, FALLBACKS.playhead),
+    lane: read(CANVAS_TOKENS.lane, FALLBACKS.lane),
+    laneAlt: read(CANVAS_TOKENS.laneAlt, FALLBACKS.laneAlt),
+    laneC: read(CANVAS_TOKENS.laneC, FALLBACKS.laneC),
   };
 };
 
 /**
  * The single place that maps a note to its fill color.
  *
- * Every note currently gets the same theme-invariant `--color-note`, so this
- * takes only the palette. To colour notes by pitch class or by track (as other
- * MIDI players do): add --color-note-1 ... --color-note-12 to index.css, read
- * them in readThemeColors above, then add a `note: Note` parameter here and
- * switch on `note.midi % 12` (or the track index). The canvas already calls
- * this per note, so that stays a change to this function plus its one call
- * site — not a sweep through the drawing code.
+ * Notes are coloured by pitch class, so the same pitch is always the same
+ * hue and an octave reads as a repeat rather than a new colour. The ramp in
+ * index.css is analogous (amber -> rose -> violet) rather than a full
+ * rainbow, so simultaneous notes read as a related family.
+ *
+ * To colour by track instead, take the track index here and index the same
+ * palette with it — this function and its call sites in MidiVisualizer are
+ * the only places that map a note to a colour.
  */
-export const getNoteColor = (colors: ThemeColors): string => colors.note;
+export const getNoteColor = (colors: ThemeColors, midi: number): string =>
+  colors.notes[((midi % 12) + 12) % 12];
