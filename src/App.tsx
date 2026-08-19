@@ -7,7 +7,24 @@ import MidiSetting from "./components/midi/MidiSetting";
 import MidiUpload from "./components/midi/MidiUpload";
 import MidiJsonView from "./components/midi/MidiJsonView";
 import Sider, { SiderSection } from "./components/layout/Sider";
+import { PanelToggleIcon } from "./components/common/icons";
 import { cn } from "./utils/cn";
+
+const CollapseButton = ({ onClick }: { onClick: () => void }) => (
+  <button
+    onClick={onClick}
+    aria-expanded
+    aria-label="Hide controls"
+    title="Hide controls"
+    className={cn(
+      "-mr-1 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md",
+      "text-text-muted transition-colors hover:bg-surface-raised hover:text-text",
+      "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+    )}
+  >
+    <PanelToggleIcon />
+  </button>
+);
 
 const PianoApp = () => {
   // Derived in the initializer rather than a mount effect: the drawer covers
@@ -22,8 +39,15 @@ const PianoApp = () => {
 
   return (
     <div className="relative flex h-full">
-      <Sider open={showSidebar} onClose={() => setShowSidebar(false)}>
-        <SiderSection title="MIDI File">
+      <Sider
+        open={showSidebar}
+        onClose={() => setShowSidebar(false)}
+        onOpen={() => setShowSidebar(true)}
+      >
+        <SiderSection
+          title="MIDI File"
+          action={<CollapseButton onClick={() => setShowSidebar(false)} />}
+        >
           <MidiUpload />
           <MidiSetting />
         </SiderSection>
@@ -46,23 +70,29 @@ const PianoApp = () => {
         </SiderSection>
       </Sider>
 
-      <button
-        onClick={() => setShowSidebar((prev) => !prev)}
-        aria-expanded={showSidebar}
-        aria-label={showSidebar ? "Hide controls" : "Show controls"}
+      {!showSidebar && (
+        <button
+          onClick={() => setShowSidebar(true)}
+          aria-expanded={false}
+          aria-label="Show controls"
+          title="Show controls"
+          className={cn(
+            "absolute top-3 left-3 z-40 flex size-9 items-center justify-center rounded-md lg:hidden",
+            "border border-border bg-surface-raised text-text-muted shadow-sm cursor-pointer",
+            "transition-colors hover:text-text",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+          )}
+        >
+          <PanelToggleIcon />
+        </button>
+      )}
+
+      <main
         className={cn(
-          "absolute top-3 z-40 flex h-8 items-center gap-1.5 rounded-r-md border border-l-0 border-border",
-          "bg-surface-raised px-2 text-xs text-text-muted shadow-sm cursor-pointer",
-          "transition-[left,color] duration-300 ease-in-out hover:text-text",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-          showSidebar ? "left-0 lg:left-[340px]" : "left-0",
+          "min-w-0 flex-1 overflow-hidden p-3 sm:p-4 lg:p-6",
+          !showSidebar && "max-lg:pt-15",
         )}
       >
-        <span aria-hidden>{showSidebar ? "‹" : "›"}</span>
-        {!showSidebar && <span className="font-medium">Controls</span>}
-      </button>
-
-      <main className="min-w-0 flex-1 overflow-hidden p-3 sm:p-4 lg:p-6">
         <MidiVisualizer />
       </main>
     </div>

@@ -1,20 +1,15 @@
 import { cn } from "@/utils/cn";
 import { ReactNode } from "react";
+import SiderRail from "./SiderRail";
 
 interface SiderProps {
   children: ReactNode;
   open: boolean;
   onClose: () => void;
+  onOpen: () => void;
 }
 
-/**
- * The control column.
- *
- * Above `lg` it is an inline panel that collapses to zero width. Below `lg`
- * there is not enough room for both the controls and the keyboard, so it
- * becomes an overlay drawer with a scrim instead of squeezing the instrument.
- */
-const Sider = ({ children, open, onClose }: SiderProps) => {
+const Sider = ({ children, open, onClose, onOpen }: SiderProps) => {
   return (
     <>
       {/* Scrim, drawer sizes only. */}
@@ -37,10 +32,21 @@ const Sider = ({ children, open, onClose }: SiderProps) => {
           "max-lg:transition-transform max-lg:duration-300 max-lg:ease-out",
           open ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
           "lg:transition-[width] lg:duration-300 lg:ease-in-out",
-          open ? "lg:w-[340px]" : "lg:w-0",
+          open ? "lg:w-[340px]" : "lg:w-14",
         )}
       >
-        <div className="flex w-[min(360px,85vw)] flex-col gap-6 p-4 lg:w-[340px]">
+        {!open && (
+          <div className="hidden h-full lg:block">
+            <SiderRail onExpand={onOpen} />
+          </div>
+        )}
+
+        <div
+          className={cn(
+            "flex w-[min(360px,85vw)] flex-col gap-6 p-4 lg:w-[340px]",
+            !open && "lg:hidden",
+          )}
+        >
           {children}
         </div>
       </aside>
@@ -61,16 +67,24 @@ export const SiderSection = ({
   title,
   note,
   dimmed,
+  action,
   children,
 }: {
   title: string;
   note?: string;
   dimmed?: boolean;
+  action?: ReactNode;
   children: ReactNode;
 }) => (
   <section className={cn(dimmed && "opacity-60")}>
-    <div className="mb-3 flex items-baseline justify-between gap-2">
+    <div
+      className={cn(
+        "mb-3 flex justify-between gap-2",
+        action ? "items-center" : "items-baseline",
+      )}
+    >
       <h2 className="text-[12px] font-bold text-text-muted">{title}</h2>
+      {action}
     </div>
 
     {note && <p className="mb-3 text-xs text-text-muted">{note}</p>}

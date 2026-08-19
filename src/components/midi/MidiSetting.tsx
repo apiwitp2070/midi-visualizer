@@ -2,77 +2,12 @@ import { ChangeEvent } from "react";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import { useMidiVisualization } from "@/context/useMidiVisualization";
+import { useMidiPlayback } from "@/hooks/useMidiPlayback";
 import currency from "currency.js";
-import { useMIDIOutputs, useMIDIOutput } from "@react-midi/hooks";
-import { useSoundFont } from "@/context/useSoundFont";
 
 export default function MidiSetting() {
-  const { piano } = useSoundFont();
-  const { output } = useMIDIOutputs();
-  const { noteOn, noteOff } = useMIDIOutput();
-  const {
-    originalMidi,
-    canvasState,
-    setCanvasState,
-    midiNotes,
-    songDelay,
-    hasMeasuredStage,
-    defaultMidiBPM,
-  } = useMidiVisualization();
-
-  const playMidiSong = async () => {
-    // songDelay is only meaningful once the stage has measured itself; playing
-    // before then schedules the audio against a stage height the canvas is not
-    // using, and nothing corrects the resulting offset.
-    if (!originalMidi || !hasMeasuredStage) return;
-
-    if (canvasState === "STOP") {
-      setCanvasState("PLAY");
-
-      midiNotes.forEach((note, index, arr) => {
-        const noteOnTimeout = currency(note.time).multiply(
-          currency(1000)
-        ).value;
-        const noteOffTimeout = currency(note.duration).multiply(
-          currency(1000)
-        ).value;
-
-        setTimeout(() => {
-          piano.play(note.name, note.time - songDelay, {
-            duration: note.duration,
-            gain: note.velocity,
-            release: 1,
-          });
-
-          // for MIDI device
-          if (output && noteOff && noteOn) {
-            noteOn(note.midi, { velocity: note.velocity * 127 });
-
-            setTimeout(() => {
-              noteOff(note.midi, { velocity: note.velocity * 127 });
-            }, noteOffTimeout);
-          }
-
-          // finish playing
-          if (index === arr.length - 1) {
-            setTimeout(() => {
-              setTimeout(() => {
-                setCanvasState("STOP");
-                piano.stop();
-              }, 1000);
-            }, noteOffTimeout);
-          }
-        }, songDelay + noteOnTimeout);
-      });
-    } else {
-      setCanvasState("STOP");
-
-      const highestTimeoutId = setTimeout(() => {}, 0) as unknown as number;
-      for (let i = 0; i < highestTimeoutId; i++) {
-        clearTimeout(i);
-      }
-    }
-  };
+  const { originalMidi, defaultMidiBPM } = useMidiVisualization();
+  const { togglePlayback, isPlaying, canPlay } = useMidiPlayback();
 
   const onChangeTempo = (e: ChangeEvent<HTMLInputElement>) => {
     const value = Number(e.target.value);
@@ -84,8 +19,6 @@ export default function MidiSetting() {
       }
     }
   };
-
-  const isPlaying = canvasState === "PLAY";
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-3">
@@ -110,8 +43,8 @@ export default function MidiSetting() {
       </p>
 
       <Button
-        onClick={playMidiSong}
-        disabled={!originalMidi || (!isPlaying && !hasMeasuredStage)}
+        onClick={togglePlayback}
+        disabled={!isPlaying && !canPlay}
         variant={isPlaying ? "danger" : "primary"}
       >
         {isPlaying ? "Stop" : "Play"}

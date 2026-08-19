@@ -12,6 +12,8 @@ export interface MidiVisualizerContextType {
   setIsExporting: React.Dispatch<React.SetStateAction<boolean>>;
   originalMidi: Midi | null;
   setOriginalMidi: React.Dispatch<React.SetStateAction<Midi | null>>;
+  fileName: string | null;
+  setFileName: React.Dispatch<React.SetStateAction<string | null>>;
   startTime: number | null;
   setStartTime: React.Dispatch<React.SetStateAction<number | null>>;
   defaultMidiBPM: number | null;

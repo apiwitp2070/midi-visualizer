@@ -38,6 +38,7 @@ export const MidiVisualizerProvider = ({
   const [isExporting, setIsExporting] = useState(false);
 
   const [originalMidi, setOriginalMidi] = useState<Midi | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [defaultMidiBPM, setDefaultMidiBPM] = useState<number | null>(null);
 
@@ -100,6 +101,8 @@ export const MidiVisualizerProvider = ({
       setIsExporting,
       originalMidi,
       setOriginalMidi,
+      fileName,
+      setFileName,
       startTime,
       setStartTime,
       defaultMidiBPM,
@@ -133,6 +136,7 @@ export const MidiVisualizerProvider = ({
       noteOffStack,
       noteOnStack,
       originalMidi,
+      fileName,
       score,
       startTime,
       midiNotes,
