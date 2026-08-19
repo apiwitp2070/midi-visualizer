@@ -18,7 +18,7 @@ const PianoApp = () => {
         <MidiJsonView />
       </Sider>
 
-      <div className="flex-1 overflow-x-auto transition-all duration-500 ease-in-out m-6">
+      <div className="flex-1 overflow-x-auto transition-[flex,margin] duration-500 ease-in-out m-6">
         <div className="h-full">
           <div className="flex justify-center min-w-[900px] w-full h-full">
             <MidiVisualizer />

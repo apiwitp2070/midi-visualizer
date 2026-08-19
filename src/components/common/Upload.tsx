@@ -1,9 +1,12 @@
 import { cn } from "@/utils/cn";
 import { useState } from "react";
 
-type UploadProps = React.InputHTMLAttributes<HTMLInputElement>;
+type UploadProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  /** Merged onto the drop-zone label. `className` targets the hidden input. */
+  labelClassName?: string;
+};
 
-export default function Upload({ ...props }: UploadProps) {
+export default function Upload({ labelClassName, ...props }: UploadProps) {
   const [fileNames, setFileNames] = useState<string[]>([]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -18,7 +21,11 @@ export default function Upload({ ...props }: UploadProps) {
 
   return (
     <label
-      className="block rounded-sm border border-gray-300 p-4 text-gray-900 shadow-xs sm:p-6 cursor-pointer"
+      className={cn(
+        "block rounded-sm border border-border p-4 text-text shadow-xs sm:p-6 cursor-pointer",
+        "transition-colors hover:border-border-strong",
+        labelClassName
+      )}
       htmlFor="File"
     >
       <div className="flex items-center justify-center gap-4 font-medium">

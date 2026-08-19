@@ -92,7 +92,7 @@ export default function MidiSetting() {
           </div>
           <p>x</p>
         </div>
-        <div className="text-slate-500">
+        <div className="text-text-muted">
           Enter number (for example: 1x, 2x, 0.5x)
         </div>
       </div>
@@ -100,7 +100,9 @@ export default function MidiSetting() {
       <Button
         onClick={playMidiSong}
         disabled={!originalMidi}
-        className={canvasState === "PLAY" ? "bg-red-400" : ""}
+        className={
+          canvasState === "PLAY" ? "bg-danger text-danger-fg" : ""
+        }
       >
         {canvasState === "PLAY" ? "Stop" : "Play"} MIDI
       </Button>

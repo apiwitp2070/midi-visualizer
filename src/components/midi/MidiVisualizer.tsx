@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/utils/cn";
 import { config } from "@/enums/config";
 import { Note } from "@tonejs/midi/dist/Note";
 import { useMidiVisualization } from "@/context/useMidiVisualization";
+import { useThemeColors } from "@/context/useThemeColors";
+import { getNoteColor, type ThemeColors } from "@/utils/themeColors";
 
 const MidiVisualizer = () => {
   const {
@@ -9,6 +12,9 @@ const MidiVisualizer = () => {
     canvasState,
     midiNotes: notes,
   } = useMidiVisualization();
+
+  // Canvas cannot read CSS classes, so token values are resolved to strings.
+  const themeColors = useThemeColors();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
@@ -36,7 +42,8 @@ const MidiVisualizer = () => {
     function drawNote(
       ctx: CanvasRenderingContext2D,
       note: Note,
-      currentTime: number
+      currentTime: number,
+      colors: ThemeColors
     ) {
       const startX =
         width -
@@ -51,15 +58,15 @@ const MidiVisualizer = () => {
         height -
         (note.midi - (config.startMidi - 1)) * (noteHeight + noteSpacing);
 
-      ctx.fillStyle = config.noteBg;
-      ctx.strokeStyle = config.noteStroke;
+      ctx.fillStyle = getNoteColor(colors);
+      ctx.strokeStyle = colors.noteStroke;
       ctx.lineWidth = borderWidth;
       ctx.beginPath();
       ctx.roundRect(startX, y, endX - startX, noteHeight, borderRadius);
       ctx.fill();
       // ctx.stroke();
 
-      ctx.fillStyle = "white";
+      ctx.fillStyle = colors.noteFg;
       ctx.font = "11px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -69,10 +76,14 @@ const MidiVisualizer = () => {
       }
     }
 
-    function draw(ctx: CanvasRenderingContext2D, currentTime: number) {
+    function draw(
+      ctx: CanvasRenderingContext2D,
+      currentTime: number,
+      colors: ThemeColors
+    ) {
       ctx.clearRect(0, 0, width, height);
       visibleNotes.forEach((note) => {
-        drawNote(ctx, note, currentTime);
+        drawNote(ctx, note, currentTime, colors);
       });
     }
 
@@ -99,7 +110,7 @@ const MidiVisualizer = () => {
         if (!ctx || canvasState === "STOP") return;
         const currentTime = (performance.now() - startTime) / 1000;
         updateActiveNotes(currentTime);
-        draw(ctx, currentTime);
+        draw(ctx, currentTime, themeColors);
         animationRef.current = requestAnimationFrame(animate);
       }
       animate();
@@ -120,12 +131,14 @@ const MidiVisualizer = () => {
         cancelAnimationFrame(animationRef.current);
       }
     };
+    // themeColors is included so a theme switch restarts the draw loop with
+    // the new palette instead of waiting for the next playback change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasState, JSON.stringify(notes)]);
+  }, [canvasState, JSON.stringify(notes), themeColors]);
 
   if (!originalMidi)
     return (
-      <div className="flex w-full h-full items-center justify-center bg-gray-200">
+      <div className="flex w-full h-full items-center justify-center bg-surface-sunken text-text-muted">
         Import MIDI file to display the visualizer
       </div>
     );
@@ -159,27 +172,19 @@ const renderPianoKeys = (activeNotes: Set<unknown>) => {
     const note = midiToNoteName(midi);
     const isActive = activeNotes.has(midi);
 
-    const border: Record<string, string> = { borderBottom: "1px solid black" };
-
-    if (midi === endMidi) {
-      border.borderTop = "1px solid black";
-    }
-
     keys.push(
       <div
         key={midi}
-        style={{
-          width: 50,
-          height: keyHeight,
-          borderInline: "1px solid black",
-          ...border,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "12px",
-          boxSizing: "border-box",
-          backgroundColor: isActive ? "#d0d0d0" : "white",
-        }}
+        // Geometry stays inline because it is derived from `config`; colors
+        // are token classes so the keys follow the theme.
+        style={{ width: 50, height: keyHeight }}
+        className={cn(
+          "flex items-center justify-center box-border text-[12px]",
+          "border-x border-b border-key-border",
+          midi === endMidi && "border-t",
+          isActive ? "bg-key-active" : "bg-key",
+          "text-key-border"
+        )}
       >
         {note}
       </div>
