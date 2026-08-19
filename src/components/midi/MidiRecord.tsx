@@ -2,8 +2,9 @@ import { useMIDIOutputs } from "@react-midi/hooks";
 import { useMidiVisualization } from "@/context/useMidiVisualization";
 import Button from "@/components/common/Button";
 import { Midi } from "@tonejs/midi";
-import { NoteScore, NoteScoring } from "@/interfaces/note";
+import { NoteScore, NoteScoring, ScoreResult } from "@/interfaces/note";
 import Accordion from "@/components/common/Accordion";
+import { cn } from "@/utils/cn";
 
 export default function MidiRecord() {
   const {
@@ -193,61 +194,140 @@ export default function MidiRecord() {
     }
   };
 
+  const maxScore = firstTrackNotes.length * 4;
+
   return (
     <>
-      <Accordion id="ac-test" title="Test">
+      <Accordion id="ac-test" title="Test your playing">
         <div className="flex flex-col gap-2">
-          {startTime && <div>Start test at: {startTime}</div>}
-          <Button disabled={!output} onClick={() => handleToggleRecordMidi()}>
-            {isRecording ? "Stop" : "Start"} the Test
+          <p className="text-xs text-text-muted">
+            Play along with the file. Each note is judged on timing and length.
+          </p>
+          <Button
+            disabled={!output || !originalMidi}
+            onClick={() => handleToggleRecordMidi()}
+            variant={isRecording ? "danger" : "primary"}
+          >
+            {isRecording ? "Stop" : "Start"} test
           </Button>
-          {!output && (
-            <p className="text-text-muted">
-              Connect your MIDI device to use this feature
-            </p>
-          )}
         </div>
       </Accordion>
 
-      {score && (
-        <>
-          <h2>Your score:</h2>
-          <div>
-            TOTAL: {score.total} / {firstTrackNotes.length * 4}
-          </div>
-          <div>Perfect: {score.perfect}</div>
-          <div>Early: {score.early}</div>
-          <div>Late: {score.late}</div>
-          <div>Miss: {score.miss}</div>
+      {score && <ScoreCard score={score} max={maxScore} notes={latestPLayedNotes} />}
 
-          <div className="pt-4">
-            {latestPLayedNotes?.map((note) => (
-              <div key={note.time}>
-                <div className="font-semibold pt-2">
-                  Note: {note.name} | Score: {note.score}
-                </div>
-                Timing: {note.timingResult} | Duration: {note.durationResult}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      <Accordion id="sc-rec" title="Record and export as MIDI file">
+      <Accordion id="sc-rec" title="Record and export">
         <div className="flex flex-col gap-2">
+          <p className="text-xs text-text-muted">
+            Captures what you play and saves it as a new .mid file.
+          </p>
           <Button
             disabled={!output}
             onClick={() => handleToggleRecordMidi("export")}
+            variant={isExporting ? "danger" : "primary"}
           >
-            {isExporting ? "Stop" : "Start"} Record MIDI
+            {isExporting ? "Stop and save" : "Start recording"}
           </Button>
-          {!output && (
-            <p className="text-text-muted">
-              Connect your MIDI device to use this feature
-            </p>
-          )}
         </div>
       </Accordion>
     </>
   );
 }
+
+// helpers
+
+/** Judgement colours, worst to best. `good` only appears for note duration. */
+const JUDGEMENT: Record<string, string> = {
+  perfect: "text-accent",
+  good: "text-accent",
+  early: "text-text",
+  late: "text-text",
+  miss: "text-danger",
+};
+
+const StatCell = ({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: string;
+}) => (
+  <div className="rounded-md bg-surface-sunken px-2 py-1.5 text-center">
+    <div className={cn("font-mono text-base font-semibold", tone)}>{value}</div>
+    <div className="text-[10px] tracking-wide text-text-muted uppercase">
+      {label}
+    </div>
+  </div>
+);
+
+/**
+ * The payoff screen. Leads with the total as a single large number, then the
+ * four judgement counts, then the per-note detail — so the result is readable
+ * at a glance and only rewards a closer look if you want one.
+ */
+const ScoreCard = ({
+  score,
+  max,
+  notes,
+}: {
+  score: ScoreResult;
+  max: number;
+  notes?: NoteScore[];
+}) => {
+  const pct = max ? Math.round(((score.total ?? 0) / max) * 100) : 0;
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-surface-raised shadow-xs">
+      <div className="border-b border-border px-3 py-3 text-center">
+        <div className="text-[11px] font-bold tracking-[0.14em] text-text-muted uppercase">
+          Your score
+        </div>
+        <div className="mt-1 flex items-baseline justify-center gap-1.5 font-display">
+          <span className="text-4xl font-bold tracking-tight text-text tabular-nums">
+            {score.total ?? 0}
+          </span>
+          <span className="font-mono text-sm text-text-muted">/ {max}</span>
+        </div>
+
+        {/* A single bar carries the ratio faster than the fraction does. */}
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-sunken">
+          <div
+            className="h-full rounded-full bg-accent"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="mt-1 font-mono text-xs text-text-muted">{pct}%</div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-1.5 p-3">
+        <StatCell label="Perfect" value={score.perfect} tone="text-accent" />
+        <StatCell label="Early" value={score.early} tone="text-text" />
+        <StatCell label="Late" value={score.late} tone="text-text" />
+        <StatCell label="Miss" value={score.miss} tone="text-danger" />
+      </div>
+
+      {!!notes?.length && (
+        <div className="max-h-56 overflow-y-auto border-t border-border">
+          {notes.map((note, index) => (
+            <div
+              key={`${note.time}-${note.midi}-${index}`}
+              className="flex items-center justify-between gap-2 px-3 py-1.5 font-mono text-xs odd:bg-surface-sunken/50"
+            >
+              <span className="w-10 font-semibold text-text">{note.name}</span>
+              <span className={cn("flex-1", JUDGEMENT[note.timingResult])}>
+                {note.timingResult}
+              </span>
+              <span className={cn("w-14", JUDGEMENT[note.durationResult])}>
+                {note.durationResult}
+              </span>
+              <span className="w-4 text-right text-text-muted">
+                {note.score}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};

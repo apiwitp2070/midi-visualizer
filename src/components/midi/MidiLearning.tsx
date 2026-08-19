@@ -33,16 +33,19 @@ export default function MidiLearning() {
   };
 
   return (
-    <Accordion id="ac-learning" title="Learning">
+    <Accordion id="ac-learning" title="Learn note by note">
       <div className="flex flex-col gap-2">
-        <Button disabled={!output} onClick={toggleLearning}>
-          {isLearning ? "Stop" : "Start"} Learning
+        <p className="text-xs text-text-muted">
+          Plays one note at a time and waits for you to match it before moving
+          on.
+        </p>
+        <Button
+          disabled={!output || !originalMidi}
+          onClick={toggleLearning}
+          variant={isLearning ? "danger" : "primary"}
+        >
+          {isLearning ? "Stop" : "Start"} learning
         </Button>
-        {!output && (
-          <p className="text-text-muted">
-            Connect your MIDI device to use this feature
-          </p>
-        )}
       </div>
     </Accordion>
   );

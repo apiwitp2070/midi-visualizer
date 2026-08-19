@@ -1,38 +1,94 @@
 import { cn } from "@/utils/cn";
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
+import SiderRail from "./SiderRail";
 
-interface AppLayoutProps {
+interface SiderProps {
   children: ReactNode;
+  open: boolean;
+  onClose: () => void;
+  onOpen: () => void;
 }
 
-const Sider = ({ children }: AppLayoutProps) => {
-  const [showSidebar, setShowSidebar] = useState(true);
-
+const Sider = ({ children, open, onClose, onOpen }: SiderProps) => {
   return (
     <>
+      {/* Scrim, drawer sizes only. */}
       <div
+        onClick={onClose}
         className={cn(
-          // Only width animates (the slide). Narrowed from transition-all so a
-          // theme switch does not fade the background and border too.
-          "h-full pb-4 border-r border-border bg-surface-sunken transition-[width] duration-500 ease-in-out overflow-y-scroll overflow-x-hidden",
-          "scroll-hidden",
-          showSidebar ? "w-[360px]" : "w-0"
+          "fixed inset-0 top-12 z-30 bg-black/50 transition-opacity duration-300 lg:hidden",
+          open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
-      >
-        <div className="w-[360px] p-4 flex flex-col gap-8">{children}</div>
-      </div>
+        aria-hidden
+      />
 
-      <button
-        onClick={() => setShowSidebar((prev) => !prev)}
+      <aside
         className={cn(
-          "absolute top-0 z-20 transition-[left] duration-500 ease-in-out px-2 h-8 bg-surface-sunken text-text border border-border border-t-0 border-l-0 rounded-br-md text-sm cursor-pointer",
-          showSidebar ? "left-[360px]" : "left-0"
+          "z-40 h-full shrink-0 border-r border-border bg-surface-sunken",
+          "scroll-hidden overflow-x-hidden overflow-y-auto",
+          // Only transform/width animate. Narrowed from transition-all so a
+          // theme switch does not fade the background and border too.
+          "max-lg:fixed max-lg:top-12 max-lg:bottom-0 max-lg:left-0 max-lg:w-[min(360px,85vw)]",
+          "max-lg:transition-transform max-lg:duration-300 max-lg:ease-out",
+          open ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
+          "lg:transition-[width] lg:duration-300 lg:ease-in-out",
+          open ? "lg:w-[340px]" : "lg:w-14",
         )}
       >
-        {!showSidebar && "Menu"} ☰
-      </button>
+        {!open && (
+          <div className="hidden h-full lg:block">
+            <SiderRail onExpand={onOpen} />
+          </div>
+        )}
+
+        <div
+          className={cn(
+            "flex w-[min(360px,85vw)] flex-col gap-6 p-4 lg:w-[340px]",
+            !open && "lg:hidden",
+          )}
+        >
+          {children}
+        </div>
+      </aside>
     </>
   );
 };
 
 export default Sider;
+
+/**
+ * A titled group of related panels.
+ *
+ * `note` carries a single explanation for the whole group — the MIDI-device
+ * features previously repeated the same "connect your device" line three
+ * times, once per panel.
+ */
+export const SiderSection = ({
+  title,
+  note,
+  dimmed,
+  action,
+  children,
+}: {
+  title: string;
+  note?: string;
+  dimmed?: boolean;
+  action?: ReactNode;
+  children: ReactNode;
+}) => (
+  <section className={cn(dimmed && "opacity-60")}>
+    <div
+      className={cn(
+        "mb-3 flex justify-between gap-2",
+        action ? "items-center" : "items-baseline",
+      )}
+    >
+      <h2 className="text-[12px] font-bold text-text-muted">{title}</h2>
+      {action}
+    </div>
+
+    {note && <p className="mb-3 text-xs text-text-muted">{note}</p>}
+
+    <div className="flex flex-col gap-2">{children}</div>
+  </section>
+);

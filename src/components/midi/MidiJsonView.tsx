@@ -6,10 +6,10 @@ export default function MidiJsonView() {
   if (!originalMidi) return null;
 
   return (
-    <Accordion id="ac-json" title="JSON">
-      <div className="overflow-auto text-xs whitespace-pre-wrap">
+    <Accordion id="ac-json" title="Raw MIDI data">
+      <pre className="overflow-auto font-mono text-[10px] leading-relaxed whitespace-pre-wrap text-text-muted">
         {JSON.stringify(originalMidi, null, 2)}
-      </div>
+      </pre>
     </Accordion>
   );
 }

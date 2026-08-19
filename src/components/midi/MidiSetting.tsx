@@ -2,73 +2,12 @@ import { ChangeEvent } from "react";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import { useMidiVisualization } from "@/context/useMidiVisualization";
+import { useMidiPlayback } from "@/hooks/useMidiPlayback";
 import currency from "currency.js";
-import { useMIDIOutputs, useMIDIOutput } from "@react-midi/hooks";
-import { useSoundFont } from "@/context/useSoundFont";
 
 export default function MidiSetting() {
-  const { piano } = useSoundFont();
-  const { output } = useMIDIOutputs();
-  const { noteOn, noteOff } = useMIDIOutput();
-  const {
-    originalMidi,
-    canvasState,
-    setCanvasState,
-    midiNotes,
-    songDelay,
-    defaultMidiBPM,
-  } = useMidiVisualization();
-
-  const playMidiSong = async () => {
-    if (!originalMidi) return;
-
-    if (canvasState === "STOP") {
-      setCanvasState("PLAY");
-
-      midiNotes.forEach((note, index, arr) => {
-        const noteOnTimeout = currency(note.time).multiply(
-          currency(1000)
-        ).value;
-        const noteOffTimeout = currency(note.duration).multiply(
-          currency(1000)
-        ).value;
-
-        setTimeout(() => {
-          piano.play(note.name, note.time - songDelay, {
-            duration: note.duration,
-            gain: note.velocity,
-            release: 1,
-          });
-
-          // for MIDI device
-          if (output && noteOff && noteOn) {
-            noteOn(note.midi, { velocity: note.velocity * 127 });
-
-            setTimeout(() => {
-              noteOff(note.midi, { velocity: note.velocity * 127 });
-            }, noteOffTimeout);
-          }
-
-          // finish playing
-          if (index === arr.length - 1) {
-            setTimeout(() => {
-              setTimeout(() => {
-                setCanvasState("STOP");
-                piano.stop();
-              }, 1000);
-            }, noteOffTimeout);
-          }
-        }, songDelay + noteOnTimeout);
-      });
-    } else {
-      setCanvasState("STOP");
-
-      const highestTimeoutId = setTimeout(() => {}, 0) as unknown as number;
-      for (let i = 0; i < highestTimeoutId; i++) {
-        clearTimeout(i);
-      }
-    }
-  };
+  const { originalMidi, defaultMidiBPM } = useMidiVisualization();
+  const { togglePlayback, isPlaying, canPlay } = useMidiPlayback();
 
   const onChangeTempo = (e: ChangeEvent<HTMLInputElement>) => {
     const value = Number(e.target.value);
@@ -82,29 +21,33 @@ export default function MidiSetting() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-4">
-        <b>MIDI Settings</b>
-        <div className="flex gap-2 items-center">
-          <p>Tempo:</p>
-          <div className="w-1/2">
-            <Input defaultValue={1} placeholder="1" onBlur={onChangeTempo} />
-          </div>
-          <p>x</p>
-        </div>
-        <div className="text-text-muted">
-          Enter number (for example: 1x, 2x, 0.5x)
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-3">
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor="tempo" className="text-sm font-medium text-text">
+          Tempo
+        </label>
+        <div className="flex w-28 items-center gap-1.5">
+          <Input
+            id="tempo"
+            defaultValue={1}
+            placeholder="1"
+            onBlur={onChangeTempo}
+            className="text-right font-mono"
+          />
+          <span className="text-sm text-text-muted">×</span>
         </div>
       </div>
 
+      <p className="text-xs text-text-muted">
+        1 plays at the file's own tempo. 0.5 halves it, 2 doubles it.
+      </p>
+
       <Button
-        onClick={playMidiSong}
-        disabled={!originalMidi}
-        className={
-          canvasState === "PLAY" ? "bg-danger text-danger-fg" : ""
-        }
+        onClick={togglePlayback}
+        disabled={!isPlaying && !canPlay}
+        variant={isPlaying ? "danger" : "primary"}
       >
-        {canvasState === "PLAY" ? "Stop" : "Play"} MIDI
+        {isPlaying ? "Stop" : "Play"}
       </Button>
     </div>
   );
