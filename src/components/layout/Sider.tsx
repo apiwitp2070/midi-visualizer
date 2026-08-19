@@ -12,7 +12,9 @@ const Sider = ({ children }: AppLayoutProps) => {
     <>
       <div
         className={cn(
-          "h-full pb-4 border-r border-gray-300 transition-all duration-500 ease-in-out overflow-y-scroll overflow-x-hidden",
+          // Only width animates (the slide). Narrowed from transition-all so a
+          // theme switch does not fade the background and border too.
+          "h-full pb-4 border-r border-border bg-surface-sunken transition-[width] duration-500 ease-in-out overflow-y-scroll overflow-x-hidden",
           "scroll-hidden",
           showSidebar ? "w-[360px]" : "w-0"
         )}
@@ -23,7 +25,7 @@ const Sider = ({ children }: AppLayoutProps) => {
       <button
         onClick={() => setShowSidebar((prev) => !prev)}
         className={cn(
-          "absolute top-0 z-20 transition-all duration-500 ease-in-out px-2 h-8 bg-gray-100 text-sm",
+          "absolute top-0 z-20 transition-[left] duration-500 ease-in-out px-2 h-8 bg-surface-sunken text-text border border-border border-t-0 border-l-0 rounded-br-md text-sm cursor-pointer",
           showSidebar ? "left-[360px]" : "left-0"
         )}
       >

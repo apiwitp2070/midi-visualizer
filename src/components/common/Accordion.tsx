@@ -1,12 +1,20 @@
 import { ReactNode } from "react";
+import { cn } from "@/utils/cn";
 
 interface AccordionProps {
   id: string;
   title: string;
   children: ReactNode;
+  /** Merged onto the expandable panel. */
+  className?: string;
 }
 
-export default function Accordion({ id, title, children }: AccordionProps) {
+export default function Accordion({
+  id,
+  title,
+  children,
+  className,
+}: AccordionProps) {
   return (
     <div>
       <div className="w-full max-w-md mx-auto space-y-2">
@@ -33,11 +41,16 @@ export default function Accordion({ id, title, children }: AccordionProps) {
           </svg>
         </label>
 
-        <div className="max-h-0 overflow-y-auto transition-all duration-300 peer-checked:max-h-96 p-0 peer-checked:py-4 bg-white">
+        <div
+          className={cn(
+            "max-h-0 overflow-y-auto transition-[max-height,padding] duration-300 peer-checked:max-h-96 p-0 peer-checked:py-4 bg-surface-raised",
+            className
+          )}
+        >
           {children}
         </div>
       </div>
-      <div className="w-full h-[1px] bg-slate-400 mt-6" />
+      <div className="w-full h-[1px] bg-border mt-6" />
     </div>
   );
 }

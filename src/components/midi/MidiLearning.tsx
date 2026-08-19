@@ -39,7 +39,7 @@ export default function MidiLearning() {
           {isLearning ? "Stop" : "Start"} Learning
         </Button>
         {!output && (
-          <p className="text-slate-500">
+          <p className="text-text-muted">
             Connect your MIDI device to use this feature
           </p>
         )}

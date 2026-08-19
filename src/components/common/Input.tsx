@@ -7,7 +7,10 @@ export default function Input({
     <input
       {...props}
       className={cn(
-        "w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 transition duration-300 focus:outline-hidden focus:border-slate-400 hover:border-slate-300 shadow-xs focus:shadow-sm",
+        // border-color and box-shadow animate on hover/focus. Listing them
+        // explicitly (rather than bare `transition`) keeps a theme switch
+        // instant while preserving those interactions.
+        "w-full bg-transparent placeholder:text-text-placeholder text-text text-sm border border-border rounded-md px-3 py-2 transition-[border-color,box-shadow] duration-300 focus:outline-hidden focus:border-border-strong hover:border-border-strong shadow-xs focus:shadow-sm",
         props.className
       )}
     />

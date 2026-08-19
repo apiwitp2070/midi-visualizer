@@ -202,7 +202,7 @@ export default function MidiRecord() {
             {isRecording ? "Stop" : "Start"} the Test
           </Button>
           {!output && (
-            <p className="text-slate-500">
+            <p className="text-text-muted">
               Connect your MIDI device to use this feature
             </p>
           )}
@@ -242,7 +242,7 @@ export default function MidiRecord() {
             {isExporting ? "Stop" : "Start"} Record MIDI
           </Button>
           {!output && (
-            <p className="text-slate-500">
+            <p className="text-text-muted">
               Connect your MIDI device to use this feature
             </p>
           )}

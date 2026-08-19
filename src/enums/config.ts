@@ -1,3 +1,7 @@
+/**
+ * Geometry only. Colors live in the design tokens in src/index.css and reach
+ * the canvas via src/utils/themeColors.ts, so they can follow the theme.
+ */
 export const config = {
   laneHeight: 15,
   startMidi: 36,
@@ -9,9 +13,7 @@ export const config = {
   noteSpacing: 1,
   noteStartOffset: 500,
 
-  // note styling
-  noteBg: "#6ca6e4",
-  noteStroke: "black",
+  // note geometry
   noteRadius: 2,
   noteBorderWidth: 1,
 };

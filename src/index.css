@@ -1,10 +1,133 @@
 @import "tailwindcss";
 
+/* Register the class-based dark strategy. Components should prefer semantic
+   tokens (bg-surface, text-text-muted, ...) over `dark:` variants — the tokens
+   swap themselves. Reach for `dark:` only for non-color tweaks that tokens
+   cannot express, e.g. a shadow or opacity adjustment. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Design tokens
+
+   Two groups, with deliberately different behaviour:
+
+   1. Theme-variant roles  — redefined in the `:root.dark` block below.
+   2. Theme-invariant tokens — declared ONCE here and intentionally NOT
+      overridden for dark, because they must look identical in both themes.
+
+   Components consume roles, never raw colors. Adding a theme or retuning the
+   palette should only ever touch this file.
+   --------------------------------------------------------------------------- */
+@theme {
+  /* -- Theme-variant: surfaces ------------------------------------------- */
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #f1f5f9;
+
+  /* -- Theme-variant: borders -------------------------------------------- */
+  --color-border: #cbd5e1;
+  --color-border-strong: #94a3b8;
+
+  /* -- Theme-variant: text ----------------------------------------------- */
+  --color-text: #0f172a;
+  /* Darkened from the previous slate-500 to clear 4.5:1 on --color-surface. */
+  --color-text-muted: #56637a;
+  --color-text-placeholder: #94a3b8;
+
+  /* -- Theme-variant: interactive ---------------------------------------- */
+  --color-accent: #3396ff;
+  --color-accent-fg: #ffffff;
+  --color-danger: #e2544c;
+  --color-danger-fg: #ffffff;
+  --color-disabled: #d5dbe3;
+  /* Disabled controls are WCAG-exempt, but this still clears 4.5:1 so the
+     label stays readable rather than merely present. */
+  --color-disabled-fg: #5d6675;
+
+  /* -- Theme-variant: piano keys ----------------------------------------- */
+  --color-key: #ffffff;
+  --color-key-active: #d0d0d0;
+  --color-key-border: #0f172a;
+
+  /* -- Theme-variant: visualizer lane striping --------------------------- */
+  --color-lane: #f9f9f9;
+  --color-lane-alt: #f2f2f2;
+
+  /* -- Theme-INVARIANT: note colors -------------------------------------- *
+   * These are the notes rendered on the canvas. They are deliberately the
+   * same in light and dark, so they are NOT repeated in `:root.dark`.
+   * Note fills are the "content" of the visualizer rather than chrome —
+   * keeping them stable means a piece looks the same whatever the theme.
+   *
+   * To grow into a multi-color scheme (per pitch class or per track, as
+   * other MIDI players do), add --color-note-1 ... --color-note-12 here and
+   * widen getNoteColor() in src/utils/themeColors.ts. That function is the
+   * only place that maps a note to a color, so nothing else needs to change.
+   */
+  --color-note: #6ca6e4;
+  --color-note-fg: #ffffff;
+  --color-note-stroke: #1e3a5f;
+}
+
+:root {
+  color-scheme: light;
+}
+
+/* Dark overrides — theme-variant tokens only. Built on slate rather than pure
+   black, with text below pure white, to avoid halation on large dark areas. */
+:root.dark {
+  color-scheme: dark;
+
+  --color-surface: #0f172a;
+  --color-surface-raised: #1e293b;
+  --color-surface-sunken: #0b1220;
+
+  --color-border: #334155;
+  --color-border-strong: #64748b;
+
+  --color-text: #e2e8f0;
+  --color-text-muted: #97a4b8;
+  --color-text-placeholder: #64748b;
+
+  --color-accent: #4da3ff;
+  --color-accent-fg: #06213f;
+  --color-danger: #f0655d;
+  --color-danger-fg: #2b0b09;
+  --color-disabled: #2c3a4f;
+  --color-disabled-fg: #9aa6b8;
+
+  --color-key: #cbd5e1;
+  --color-key-active: #7c8ba1;
+  --color-key-border: #0b1220;
+
+  --color-lane: #131c30;
+  --color-lane-alt: #18223a;
+}
+
+/* Theme switching should be instantaneous.
+ *
+ * Individual transitions are already scoped to the properties they animate
+ * (width, filter, max-height, ...) so most colors swap instantly. This covers
+ * the remaining cases where an element legitimately animates color for a hover
+ * affordance: ThemeProvider adds .theme-switching to <html> for one frame
+ * around the change, suppressing those transitions just long enough for the
+ * swap, then removes it so hover effects work normally again.
+ *
+ * Canvas repainting is unaffected — it is driven by JS, not CSS. */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -21,15 +144,19 @@ body {
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 .canvas-container {
   position: relative;
   width: 800px;
   height: 915px;
-  background: linear-gradient(to bottom, #f9f9f9 14px, #f2f2f2 14px);
+  background: linear-gradient(
+    to bottom,
+    var(--color-lane) 14px,
+    var(--color-lane-alt) 14px
+  );
   background-size: 100% 30px; /* Adjust according to noteHeight and noteSpacing */
 }
 
