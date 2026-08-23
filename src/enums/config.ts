@@ -7,8 +7,6 @@ export const config = {
   // key to land on, so narrowing it means notes you hear but cannot see.
   startMidi: 21, // A0
   endMidi: 108, // C8
-  pixelsPerSecond: 200,
-
   // Keys have two independent axes: `size` along the pitch axis, where only
   // white keys take up space, and depth toward the player, where black keys
   // stop short so the white key shows below them.

@@ -61,12 +61,12 @@ export default function Upload({
       className={cn(
         "group flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg px-4 py-6 text-center",
         "border border-dashed transition-[border-color,background-color]",
-        // The focus ring lives here: the input itself is visually hidden, so
-        // keyboard users would otherwise get no focus affordance at all.
+        // The input is visually hidden, so show its keyboard focus on the
+        // visible drop zone.
         "focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent",
         hasFile
           ? "border-accent/60 bg-accent/5"
-          : "border-border bg-surface-raised hover:border-accent hover:bg-surface-sunken",
+          : "border-accent bg-surface-raised hover:bg-surface-raised/50",
         labelClassName,
       )}
       htmlFor={inputId}

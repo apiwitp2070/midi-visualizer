@@ -1,5 +1,5 @@
 import { useMidiVisualization } from "@/context/useMidiVisualization";
-import { useSoundFont } from "@/context/useSoundFont";
+import { useAudioEngine } from "@/context/useAudioEngine";
 
 /**
  * The play/stop control surface. Deliberately does no scheduling: the audio is
@@ -8,28 +8,52 @@ import { useSoundFont } from "@/context/useSoundFont";
  * and play every note twice.
  */
 export const useMidiPlayback = () => {
-  const { ac } = useSoundFont();
-  const { originalMidi, canvasState, setCanvasState, hasMeasuredStage } =
-    useMidiVisualization();
+  const { audioContext, status, resume } = useAudioEngine();
+  const {
+    originalMidi,
+    playbackState,
+    startPlayback: setPlaybackOrigin,
+    stopPlayback,
+    hasMeasuredStage,
+    leadInSeconds,
+  } = useMidiVisualization();
 
-  const isPlaying = canvasState === "PLAY";
-  const canPlay = Boolean(originalMidi) && hasMeasuredStage;
+  const isPlaying = playbackState.status === "PLAY";
+  const canPlay =
+    Boolean(originalMidi) &&
+    hasMeasuredStage &&
+    status === "ready" &&
+    audioContext !== null;
 
-  const togglePlayback = () => {
-    if (!canPlay) return;
+  const startPlayback = async () => {
+    if (!canPlay || !audioContext) return false;
 
-    // The AudioContext is constructed at module load, long before any user
-    // gesture, so the browser starts it suspended — and a suspended context's
-    // currentTime never advances, which the scheduler's whole clock rests on.
-    //
-    // This click is the gesture that permits resuming, so it has to happen
-    // here rather than in the scheduler's effect. Not awaited: awaiting would
-    // continue on a later task, outside the gesture, and the resume would be
-    // refused.
-    if (ac.state === "suspended") void ac.resume();
+    try {
+      // Called directly from the click handler so browser autoplay policies
+      // see the resume request as part of the user gesture.
+      await resume();
+    } catch {
+      stopPlayback();
+      return false;
+    }
 
-    setCanvasState((prev) => (prev === "STOP" ? "PLAY" : "STOP"));
+    setPlaybackOrigin(audioContext.currentTime + leadInSeconds);
+    return true;
   };
 
-  return { togglePlayback, isPlaying, canPlay };
+  const togglePlayback = async () => {
+    if (isPlaying) {
+      stopPlayback();
+      return;
+    }
+    await startPlayback();
+  };
+
+  return {
+    togglePlayback,
+    startPlayback,
+    stopPlayback,
+    isPlaying,
+    canPlay,
+  };
 };

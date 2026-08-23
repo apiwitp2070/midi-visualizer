@@ -18,17 +18,5 @@ export default tseslint.config(
       ecmaVersion: 2020,
       globals: globals.browser,
     },
-    rules: {
-      // eslint-plugin-react-hooks v7 enables the React Compiler ruleset, which
-      // surfaces pre-existing issues in the canvas/MIDI code (mutating the
-      // parsed Midi object for tempo, setState in the rAF teardown effect).
-      // These are real but predate this upgrade, and fixing them means changing
-      // audio/animation behavior that only a browser can verify. Kept visible as
-      // warnings so the upgrade stays behavior-neutral; fix in a separate pass.
-      // The lint script allows exactly these 2 warnings (--max-warnings 2), so
-      // any new warning still fails the build. Lower the budget as they're fixed.
-      "react-hooks/immutability": "warn",
-      "react-hooks/set-state-in-effect": "warn",
-    },
   }
 );

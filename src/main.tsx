@@ -4,7 +4,7 @@ import App from "./App.tsx";
 import "./index.css";
 import { MIDIProvider } from "@react-midi/hooks";
 import Header from "./components/layout/Header.tsx";
-import { SoundFontProvider } from "./context/SoundFontProvider.tsx";
+import { AudioEngineProvider } from "./context/AudioEngineProvider.tsx";
 import { MidiVisualizerProvider } from "./context/MidiVisualizeContext.tsx";
 import { MidiMessageProvider } from "./context/MidiMessageContext.tsx";
 import { ThemeProvider } from "./context/ThemeProvider.tsx";
@@ -14,7 +14,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider>
       <MIDIProvider>
-        <SoundFontProvider>
+        <AudioEngineProvider>
           <MidiVisualizerProvider>
             <MidiMessageProvider>
               {/* Mounted once, on purpose: it schedules audio, so a second
@@ -30,7 +30,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               </main>
             </MidiMessageProvider>
           </MidiVisualizerProvider>
-        </SoundFontProvider>
+        </AudioEngineProvider>
       </MIDIProvider>
     </ThemeProvider>
   </React.StrictMode>

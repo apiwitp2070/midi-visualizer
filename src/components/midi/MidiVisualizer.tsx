@@ -7,9 +7,11 @@ import {
 } from "@/enums/config";
 import { Note } from "@tonejs/midi/dist/Note";
 import { useMidiVisualization } from "@/context/useMidiVisualization";
-import { DELAY_OFFSET } from "@/context/MidiVisualizeContext";
+import { useAudioEngine } from "@/context/useAudioEngine";
 import { useThemeColors } from "@/context/useThemeColors";
 import { getNoteColor, type ThemeColors } from "@/utils/themeColors";
+import { getVisualSongTime } from "@/utils/audioClock";
+import { NoteWindowIndex } from "@/utils/NoteWindowIndex";
 
 /**
  * Lit keys, by pitch, valued by the start time of the note lighting them.
@@ -55,10 +57,13 @@ const useElementSize = <T extends HTMLElement>() => {
 const MidiVisualizer = () => {
   const {
     originalMidi,
-    canvasState,
+    playbackState,
+    playbackSettings,
     midiNotes: notes,
     setTravelDistance,
   } = useMidiVisualization();
+  const { audioContext } = useAudioEngine();
+  const { noteScrollSpeed, showNoteLabels, visualOffsetMs } = playbackSettings;
 
   // Canvas cannot read CSS classes, so token values are resolved to strings.
   const themeColors = useThemeColors();
@@ -66,10 +71,6 @@ const MidiVisualizer = () => {
   const [frameRef, frameSize] = useElementSize<HTMLDivElement>();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
-  // In a ref because the draw loop must survive resize and theme changes;
-  // re-seeding the origin would snap visuals back to t=0 while the audio's
-  // already-scheduled notes kept going.
-  const startTimeRef = useRef<number | null>(null);
   const prevTimeRef = useRef<number | null>(null);
   // A ref, not state: this changes on almost every frame during playback, and
   // committing it to React would re-render the component 60 times a second.
@@ -102,8 +103,8 @@ const MidiVisualizer = () => {
     return buildKeyboardLayout(fitted);
   }, [canvasWidth]);
 
-  // Feeds songDelay, which the audio is scheduled against. Must stay equal to
-  // `playheadY` in the draw effect or sound and visuals drift apart.
+  // Feeds the shared transport lead-in. It is the distance from the stage top
+  // to the playhead, measured in the same pixels used by the draw loop.
   const travelDistance = stageHeight
     ? stageHeight - config.playheadInset
     : 0;
@@ -112,8 +113,11 @@ const MidiVisualizer = () => {
     if (travelDistance > 0) setTravelDistance(travelDistance);
   }, [travelDistance, setTravelDistance]);
 
-  const visibleNotes = useMemo(
-    () => notes.filter((note) => note.time + note.duration > 0),
+  const noteWindowIndex = useMemo(
+    () =>
+      new NoteWindowIndex(
+        notes.filter((note) => note.time + note.duration > 0),
+      ),
     [notes],
   );
 
@@ -133,12 +137,14 @@ const MidiVisualizer = () => {
   const sceneRef = useRef({
     layout,
     themeColors,
-    visibleNotes,
+    noteWindowIndex,
     noteFont,
     canvasWidth,
     canvasHeight,
     stageHeight,
     keyboardDepth,
+    noteScrollSpeed,
+    showNoteLabels,
   });
   // Written in an effect, not during render: a ref mutated mid-render is not
   // safe under concurrent rendering, and the draw loop only needs the values
@@ -147,22 +153,26 @@ const MidiVisualizer = () => {
     sceneRef.current = {
       layout,
       themeColors,
-      visibleNotes,
+      noteWindowIndex,
       noteFont,
       canvasWidth,
       canvasHeight,
       stageHeight,
       keyboardDepth,
+      noteScrollSpeed,
+      showNoteLabels,
     };
   }, [
     layout,
     themeColors,
-    visibleNotes,
+    noteWindowIndex,
     noteFont,
     canvasWidth,
     canvasHeight,
     stageHeight,
     keyboardDepth,
+    noteScrollSpeed,
+    showNoteLabels,
   ]);
 
   const reducedMotion = useRef(false);
@@ -197,46 +207,57 @@ const MidiVisualizer = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const paint = (currentTime: number | null) => {
-      drawScene(ctx, sceneRef.current, currentTime, activeNotesRef.current, {
-        reducedMotion: reducedMotion.current,
-      });
+    const paint = (currentTime: number | null, frameNotes: Note[] = []) => {
+      drawScene(
+        ctx,
+        sceneRef.current,
+        frameNotes,
+        currentTime,
+        activeNotesRef.current,
+        { reducedMotion: reducedMotion.current },
+      );
     };
 
-    if (canvasState !== "PLAY") {
-      // Released so the next Play starts a fresh clock.
-      startTimeRef.current = null;
+    if (playbackState.status !== "PLAY" || !audioContext) {
       prevTimeRef.current = null;
       activeNotesRef.current = new Map();
+      sceneRef.current.noteWindowIndex.reset();
       // Idle still paints, so the stage reads as an instrument waiting.
       paint(null);
       return;
     }
 
-    if (startTimeRef.current === null) {
-      startTimeRef.current = performance.now();
-    }
-    const startTime = startTimeRef.current;
-
-    // Starts the clock before zero so a note at time 0 falls the length of
-    // the stage instead of appearing on the playhead. Must stay in step with
-    // `songDelay`, which the audio is scheduled against — except for
-    // AUDIO_LEAD_MS, left out here so sound arrives fractionally ahead of
-    // the key lighting up.
-    const leadIn =
-      (sceneRef.current.stageHeight - config.playheadInset) /
-        config.pixelsPerSecond +
-      DELAY_OFFSET / 1000;
+    const originAudioTime = playbackState.originAudioTime;
+    sceneRef.current.noteWindowIndex.reset();
 
     const animate = () => {
-      const currentTime = (performance.now() - startTime) / 1000 - leadIn;
+      const currentTime = getVisualSongTime(
+        audioContext,
+        originAudioTime,
+        visualOffsetMs,
+      );
+      const horizon =
+        currentTime +
+        Math.max(sceneRef.current.stageHeight - config.playheadInset, 0) /
+          noteScrollSpeed;
+      // Keep notes that ended since the previous frame for one last pass. The
+      // active-key interval test below then preserves flashes for notes shorter
+      // than a display frame without expanding the normal visible window.
+      const windowStart = Math.min(
+        prevTimeRef.current ?? currentTime,
+        currentTime,
+      );
+      const frameNotes = sceneRef.current.noteWindowIndex.update(
+        windowStart,
+        horizon,
+      );
       updateActiveNotes(
-        sceneRef.current.visibleNotes,
+        frameNotes,
         activeNotesRef.current,
         currentTime,
         prevTimeRef,
       );
-      paint(currentTime);
+      paint(currentTime, frameNotes);
       animationRef.current = requestAnimationFrame(animate);
     };
 
@@ -251,18 +272,18 @@ const MidiVisualizer = () => {
         animationRef.current = null;
       }
     };
-  }, [canvasState]);
+  }, [audioContext, noteScrollSpeed, playbackState, visualOffsetMs]);
 
   // A theme switch or resize while stopped has no running loop to repaint the
   // idle stage, so it is repainted here.
   useEffect(() => {
-    if (canvasState === "PLAY") return;
+    if (playbackState.status === "PLAY") return;
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx || !canvasWidth || !canvasHeight) return;
-    drawScene(ctx, sceneRef.current, null, new Map(), {
+    drawScene(ctx, sceneRef.current, [], null, new Map(), {
       reducedMotion: reducedMotion.current,
     });
-  }, [canvasState, themeColors, layout, canvasWidth, canvasHeight, visibleNotes]);
+  }, [playbackState.status, themeColors, layout, canvasWidth, canvasHeight]);
 
   return (
     <div
@@ -294,12 +315,14 @@ export default MidiVisualizer;
 interface Scene {
   layout: KeyboardLayout;
   themeColors: ThemeColors;
-  visibleNotes: Note[];
+  noteWindowIndex: NoteWindowIndex<Note>;
   noteFont: string;
   canvasWidth: number;
   canvasHeight: number;
   stageHeight: number;
   keyboardDepth: number;
+  noteScrollSpeed: number;
+  showNoteLabels: boolean;
 }
 
 /**
@@ -317,7 +340,14 @@ function updateActiveNotes(
 ) {
   // Tested against the interval since the last frame, not this instant: a
   // note shorter than one frame would otherwise never light its key.
-  const prevTime = prevTimeRef.current ?? currentTime;
+  const previousTime = prevTimeRef.current;
+  // Treat a backward clock movement as a new interval. The note index resets
+  // independently; carrying the later timestamp here would suppress active
+  // keys for the first rebuilt frame.
+  const prevTime =
+    previousTime === null || currentTime < previousTime
+      ? currentTime
+      : previousTime;
   prevTimeRef.current = currentTime;
 
   active.clear();
@@ -341,6 +371,7 @@ function updateActiveNotes(
 function drawScene(
   ctx: CanvasRenderingContext2D,
   scene: Scene,
+  frameNotes: Note[],
   currentTime: number | null,
   active: ActiveNotes,
   options: { reducedMotion: boolean },
@@ -348,12 +379,13 @@ function drawScene(
   const {
     layout,
     themeColors: colors,
-    visibleNotes,
     noteFont,
     canvasWidth: width,
     canvasHeight: height,
     stageHeight,
     keyboardDepth,
+    noteScrollSpeed,
+    showNoteLabels,
   } = scene;
   if (!width || !height) return;
 
@@ -371,7 +403,7 @@ function drawScene(
 
   drawLanes(ctx, layout, colors, stageHeight);
   if (currentTime !== null) {
-    visibleNotes.forEach((note) => {
+    frameNotes.forEach((note) => {
       drawNote(
         ctx,
         note,
@@ -381,6 +413,8 @@ function drawScene(
         playheadY,
         stageHeight,
         noteFont,
+        noteScrollSpeed,
+        showNoteLabels,
       );
     });
   }
@@ -436,12 +470,14 @@ function drawNote(
   playheadY: number,
   stageHeight: number,
   noteFont: string,
+  pixelsPerSecond: number,
+  showNoteLabels: boolean,
 ) {
   const key = layout.byMidi.get(note.midi);
   // Notes outside the rendered key range have nowhere to land.
   if (!key) return;
 
-  const { pixelsPerSecond, noteInset, noteRadius, noteTailGap } = config;
+  const { noteInset, noteRadius, noteTailGap } = config;
 
   // startY is the note's leading edge — the point that lands on the
   // playhead. The body trails upward behind it, so a held note is still
@@ -478,7 +514,7 @@ function drawNote(
   ctx.fill();
 
   // Labels drop out rather than overflow when a note is too small.
-  if (noteWidth >= 22 && drawnLength >= 26) {
+  if (showNoteLabels && noteWidth >= 22 && drawnLength >= 26) {
     ctx.fillStyle = colors.noteFg;
     ctx.font = noteFont;
     ctx.textAlign = "center";
