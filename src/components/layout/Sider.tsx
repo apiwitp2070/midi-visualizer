@@ -59,9 +59,8 @@ export default Sider;
 /**
  * A titled group of related panels.
  *
- * `note` carries a single explanation for the whole group — the MIDI-device
- * features previously repeated the same "connect your device" line three
- * times, once per panel.
+ * `note` states a shared prerequisite once for the whole group, instead of
+ * each panel repeating it.
  */
 export const SiderSection = ({
   title,
