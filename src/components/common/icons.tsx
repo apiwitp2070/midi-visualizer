@@ -43,3 +43,13 @@ export const PanelToggleIcon = ({ className = "size-5" }: IconProps) => (
     />
   </svg>
 );
+
+export const DownloadIcon = ({ className = "size-4" }: IconProps) => (
+  <svg {...iconProps} className={className}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"
+    />
+  </svg>
+);

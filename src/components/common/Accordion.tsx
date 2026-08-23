@@ -27,16 +27,13 @@ export default function Accordion({
         htmlFor={id}
         className={cn(
           "flex cursor-pointer items-center justify-between gap-2 px-3 py-2.5",
-          "text-sm font-semibold text-text transition-colors hover:bg-surface-sunken",
-          // The label is the control, so it carries the focus ring the
-          // visually-hidden checkbox would otherwise show nowhere.
-          "peer-focus-visible:outline-2 peer-focus-visible:-outline-offset-2 peer-focus-visible:outline-accent"
+          "text-sm font-semibold text-text transition-colors hover:bg-surface-sunken/40",
+          // The label is the visible control, so it carries the focus ring for
+          // the visually-hidden checkbox.
+          "peer-focus-visible:outline-2 peer-focus-visible:-outline-offset-2 peer-focus-visible:outline-accent",
         )}
       >
         {title}
-        {/* `peer-checked:` compiles to a sibling selector, which cannot reach
-            an element nested inside the label — hence the group-style
-            arbitrary variant keyed off the checkbox two levels up. */}
         <svg
           className="size-4 shrink-0 text-text-muted transition-transform duration-300 [:checked~label_&]:rotate-180"
           xmlns="http://www.w3.org/2000/svg"
@@ -59,7 +56,7 @@ export default function Accordion({
           "max-h-0 overflow-y-auto transition-[max-height,padding] duration-300",
           "px-3 peer-checked:max-h-96 peer-checked:py-3",
           "border-t border-transparent peer-checked:border-border",
-          className
+          className,
         )}
       >
         {children}

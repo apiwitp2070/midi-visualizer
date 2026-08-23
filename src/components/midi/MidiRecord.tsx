@@ -5,6 +5,7 @@ import { Midi } from "@tonejs/midi";
 import { NoteScore, NoteScoring, ScoreResult } from "@/interfaces/note";
 import Accordion from "@/components/common/Accordion";
 import { cn } from "@/utils/cn";
+import { useMidiPlayback } from "@/hooks/useMidiPlayback";
 
 export default function MidiRecord() {
   const {
@@ -14,7 +15,6 @@ export default function MidiRecord() {
     score,
     setScore,
     setLatestPlayedNotes,
-    setCanvasState,
     setIsRecording,
     setStartTime,
     noteOnStack,
@@ -22,23 +22,28 @@ export default function MidiRecord() {
     setNoteOffStack,
     setNoteOnStack,
     isExporting,
-    songDelay,
+    leadInSeconds,
+    playbackSettings,
     setIsExporting,
     firstTrackNotes,
     latestPLayedNotes,
   } = useMidiVisualization();
 
   const { output } = useMIDIOutputs();
+  const { startPlayback, stopPlayback, canPlay } = useMidiPlayback();
 
   const handleToggleRecordMidi = async (toggleType = "record") => {
     if (isRecording) {
-      setCanvasState("STOP");
+      if (!isExporting) stopPlayback();
       setIsRecording(false);
       setStartTime(null);
 
       const newMidi = new Midi();
       const track = newMidi.addTrack();
 
+      const transportLeadMs = isExporting
+        ? 0
+        : leadInSeconds * 1000 + playbackSettings.visualOffsetMs;
       noteOnStack.forEach((note) => {
         const offNote = noteOffStack.find(
           (off) => off.midi === note.midi && !off.checked
@@ -50,7 +55,9 @@ export default function MidiRecord() {
           track.addNote({
             midi: note.midi,
             time:
-              (note.time - (startTime || noteOnStack[0].time) - songDelay) /
+              (note.time -
+                (startTime || noteOnStack[0].time) -
+                transportLeadMs) /
               1000,
             duration: (offNote.time - note.time) / 1000,
             velocity: note.velocity / 127, // normalized velocity bwtween 0 and 1
@@ -173,10 +180,12 @@ export default function MidiRecord() {
     } else {
       if (toggleType === "export") {
         setIsExporting(true);
+      } else {
+        const started = await startPlayback();
+        if (!started) return;
       }
 
       setIsRecording(true);
-      setCanvasState("PLAY");
       setStartTime(new Date().valueOf());
     }
   };
@@ -191,7 +200,7 @@ export default function MidiRecord() {
             Play along with the file. Each note is judged on timing and length.
           </p>
           <Button
-            disabled={!output || !originalMidi}
+            disabled={!output || !originalMidi || !canPlay}
             onClick={() => handleToggleRecordMidi()}
             variant={isRecording ? "danger" : "primary"}
           >

@@ -3,7 +3,8 @@ import { useMIDIOutputs } from "@react-midi/hooks";
 import MidiVisualizer from "./components/midi/MidiVisualizer";
 import MidiRecord from "./components/midi/MidiRecord";
 import MidiLearning from "./components/midi/MidiLearning";
-import MidiSetting from "./components/midi/MidiSetting";
+import MidiPlaybackControls from "./components/midi/MidiPlaybackControls";
+import PlaybackSettings from "./components/midi/PlaybackSettings";
 import MidiUpload from "./components/midi/MidiUpload";
 import MidiJsonView from "./components/midi/MidiJsonView";
 import Sider, { SiderSection } from "./components/layout/Sider";
@@ -49,7 +50,8 @@ const PianoApp = () => {
           action={<CollapseButton onClick={() => setShowSidebar(false)} />}
         >
           <MidiUpload />
-          <MidiSetting />
+          <MidiPlaybackControls />
+          <PlaybackSettings />
         </SiderSection>
 
         <SiderSection

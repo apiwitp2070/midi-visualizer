@@ -2,6 +2,7 @@ import { Midi } from "@tonejs/midi";
 import { Note } from "@tonejs/midi/dist/Note";
 import { createContext } from "react";
 import { NoteScoring, ScoreResult, NoteScore } from "../interfaces/note";
+import type { PlaybackSettings } from "@/config/playback";
 
 export interface MidiVisualizerContextType {
   isRecording: boolean;
@@ -16,8 +17,6 @@ export interface MidiVisualizerContextType {
   setFileName: React.Dispatch<React.SetStateAction<string | null>>;
   startTime: number | null;
   setStartTime: React.Dispatch<React.SetStateAction<number | null>>;
-  defaultMidiBPM: number | null;
-  setDefaultMidiBPM: React.Dispatch<React.SetStateAction<number | null>>;
   currentNotes: NoteScoring[][];
   setCurrentNotes: React.Dispatch<React.SetStateAction<NoteScoring[][]>>;
   noteOnStack: NoteScoring[];
@@ -30,20 +29,27 @@ export interface MidiVisualizerContextType {
   setLatestPlayedNotes: React.Dispatch<
     React.SetStateAction<NoteScore[] | undefined>
   >;
-  canvasState: "STOP" | "PLAY";
-  setCanvasState: React.Dispatch<React.SetStateAction<"STOP" | "PLAY">>;
+  playbackState: PlaybackState;
+  startPlayback: (originAudioTime: number) => void;
+  stopPlayback: () => void;
+  playbackSettings: PlaybackSettings;
+  savePlaybackSettings: (settings: PlaybackSettings) => void;
   midiNotes: Note[];
-  songDelay: number;
+  leadInSeconds: number;
   /** Reported by the visualizer once it knows how far a note falls. */
   setTravelDistance: React.Dispatch<React.SetStateAction<number | null>>;
   /**
-   * Whether the stage has reported its real height. Until it has, `songDelay`
+   * Whether the stage has reported its real height. Until it has, the lead-in
    * is not meaningful and playback must not start — scheduling audio against
    * an unmeasured stage desyncs it from the canvas with no later correction.
    */
   hasMeasuredStage: boolean;
   firstTrackNotes: Note[];
 }
+
+export type PlaybackState =
+  | { status: "STOP"; originAudioTime: null }
+  | { status: "PLAY"; originAudioTime: number };
 
 export const MidiVisualizerContext = createContext<
   MidiVisualizerContextType | undefined
