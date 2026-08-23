@@ -190,6 +190,33 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* The strike flash on a struck key.
+ *
+ * Repeated notes on one key would otherwise show a single steady light — the
+ * key never stops being active, so nothing marks the second hit. React remounts
+ * this element per note (keyed by start time), which replays the animation and
+ * makes each strike visible.
+ *
+ * Animating opacity only keeps it on the compositor, so a dense passage costs
+ * no main-thread work no matter how many keys flash at once. */
+@keyframes key-strike {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.key-strike {
+  /* Background colour comes from the key's own pitch hue, set inline. The
+     flash is that same colour overbrightened, so a strike reads as the key
+     surging rather than blinking to a different colour. */
+  opacity: 0;
+  filter: brightness(1.9);
+  animation: key-strike 80ms ease-out;
+}
+
 /* Honour a reduced-motion preference globally. The keyboard glow and the
    sidebar slide are the only substantial motion in the app; both are purely
    decorative, so removing them costs nothing functionally. */

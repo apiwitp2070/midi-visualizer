@@ -3,41 +3,31 @@
  * the canvas via src/utils/themeColors.ts, so they can follow the theme.
  */
 export const config = {
-  // The full 88-key acoustic piano, A0 to C8. Chosen as the widest range a
-  // piano MIDI file can use: notes outside the rendered range are silently
-  // dropped by drawNote (they have no key to land on) while still being
-  // played, so a narrower range means notes the user hears but cannot see.
-  // At this span that early-return is unreachable in practice.
+  // Full 88-key piano. Notes outside this range are still played but have no
+  // key to land on, so narrowing it means notes you hear but cannot see.
   startMidi: 21, // A0
   endMidi: 108, // C8
   pixelsPerSecond: 200,
 
-  // Piano keyboard geometry.
-  //
-  // The keyboard is a horizontal strip along the bottom, low notes on the
-  // left, with notes falling onto it from above. Two independent axes:
-  //
-  //   pitch axis (x) — `size` below. Only white keys occupy space here;
-  //                    black keys are centred on the seam between the two
-  //                    white keys they sit between.
-  //   depth axis (y) — how far a key extends toward the player. White keys
-  //                    span the full depth; black keys stop short, so the
-  //                    white key shows below them the way it does on a real
-  //                    instrument seen from above.
+  // Keys have two independent axes: `size` along the pitch axis, where only
+  // white keys take up space, and depth toward the player, where black keys
+  // stop short so the white key shows below them.
   whiteKeySize: 22,
   blackKeySizeRatio: 0.62, // of a white key, along the pitch axis
   keyboardDepth: 110,
   blackKeyDepthRatio: 0.62, // of the keyboard depth
 
-  // Notes are drawn as columns as wide as the key they land on. This is the
-  // inset that keeps adjacent columns visually separated.
+  // Keeps adjacent note columns visually separated.
   noteInset: 1.5,
 
-  // How far above the bottom edge the playhead sits. Notes fall toward it and
-  // are "played" as they cross it.
-  playheadInset: 2,
+  // Trimmed off each note's tail so a repeated note reads as two notes rather
+  // than one long one.
+  noteTailGap: 1.5,
 
-  // note geometry
+  // How far above the bottom edge the playhead sits. Any inset leaves a strip
+  // of lane below it, reading as a gap between the playhead and the keys.
+  playheadInset: 0,
+
   noteRadius: 3,
 };
 
@@ -89,7 +79,7 @@ export interface KeyboardLayout {
  * fill a specific pixel span pass a scaled `whiteKeySize` instead.
  */
 export const buildKeyboardLayout = (
-  whiteKeySize: number = config.whiteKeySize
+  whiteKeySize: number = config.whiteKeySize,
 ): KeyboardLayout => {
   const { startMidi, endMidi, blackKeySizeRatio, blackKeyDepthRatio } = config;
 
