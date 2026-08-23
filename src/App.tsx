@@ -50,8 +50,8 @@ const PianoApp = () => {
           action={<CollapseButton onClick={() => setShowSidebar(false)} />}
         >
           <MidiUpload />
-          <PlaybackSettings />
           <MidiPlaybackControls />
+          <PlaybackSettings />
         </SiderSection>
 
         <SiderSection
