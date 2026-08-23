@@ -1,5 +1,5 @@
 import { Midi } from "@tonejs/midi";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { config } from "../enums/config";
 import { NoteScoring, ScoreResult, NoteScore } from "../interfaces/note";
 import { MidiVisualizerContext } from "./MidiVisualizeContextValue";
@@ -37,7 +37,7 @@ export const MidiVisualizerProvider = ({
   const [isLearning, setIsLearning] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const [originalMidi, setOriginalMidi] = useState<Midi | null>(null);
+  const [originalMidi, setOriginalMidiState] = useState<Midi | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [defaultMidiBPM, setDefaultMidiBPM] = useState<number | null>(null);
@@ -53,6 +53,13 @@ export const MidiVisualizerProvider = ({
 
   // MIDI player
   const [canvasState, setCanvasState] = useState<"STOP" | "PLAY">("STOP");
+
+  const setOriginalMidi = useCallback<
+    React.Dispatch<React.SetStateAction<Midi | null>>
+  >((action) => {
+    setCanvasState("STOP");
+    setOriginalMidiState(action);
+  }, []);
 
   const midiNotes = useMemo(() => {
     return (
@@ -136,6 +143,7 @@ export const MidiVisualizerProvider = ({
       noteOffStack,
       noteOnStack,
       originalMidi,
+      setOriginalMidi,
       fileName,
       score,
       startTime,

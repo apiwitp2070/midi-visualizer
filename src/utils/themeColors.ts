@@ -21,6 +21,11 @@ const CANVAS_TOKENS = {
   lane: "--color-lane",
   laneAlt: "--color-lane-alt",
   laneC: "--color-lane-c",
+  keyWhite: "--color-key-white",
+  keyBlack: "--color-key-black",
+  keyBorder: "--color-key-border",
+  surfaceSunken: "--color-surface-sunken",
+  textMuted: "--color-text-muted",
 } as const;
 
 export type ThemeColors = Record<keyof typeof CANVAS_TOKENS, string> & {
@@ -50,6 +55,11 @@ const FALLBACKS: ThemeColors = {
   lane: "#efeae1",
   laneAlt: "#e8e2d7",
   laneC: "#ddd4c5",
+  keyWhite: "#fdfcfa",
+  keyBlack: "#23202b",
+  keyBorder: "#2a2530",
+  surfaceSunken: "#f0ece5",
+  textMuted: "#6b6357",
 };
 
 /**
@@ -82,15 +92,20 @@ export const readThemeColors = (theme: Theme): ThemeColors => {
   const read = (token: string, fallback: string) =>
     styles.getPropertyValue(token).trim() || fallback;
 
+  // Derived from CANVAS_TOKENS rather than listed again, so adding a token is
+  // a one-line change and the two lists cannot drift apart.
+  const resolved = Object.fromEntries(
+    Object.entries(CANVAS_TOKENS).map(([key, token]) => [
+      key,
+      read(token, FALLBACKS[key as keyof typeof CANVAS_TOKENS]),
+    ])
+  ) as Record<keyof typeof CANVAS_TOKENS, string>;
+
   return {
+    ...resolved,
     notes: NOTE_TOKENS.map((token, index) =>
       read(token, FALLBACKS.notes[index])
     ),
-    noteFg: read(CANVAS_TOKENS.noteFg, FALLBACKS.noteFg),
-    playhead: read(CANVAS_TOKENS.playhead, FALLBACKS.playhead),
-    lane: read(CANVAS_TOKENS.lane, FALLBACKS.lane),
-    laneAlt: read(CANVAS_TOKENS.laneAlt, FALLBACKS.laneAlt),
-    laneC: read(CANVAS_TOKENS.laneC, FALLBACKS.laneC),
   };
 };
 

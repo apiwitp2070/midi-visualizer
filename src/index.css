@@ -190,36 +190,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* The strike flash on a struck key.
- *
- * Repeated notes on one key would otherwise show a single steady light — the
- * key never stops being active, so nothing marks the second hit. React remounts
- * this element per note (keyed by start time), which replays the animation and
- * makes each strike visible.
- *
- * Animating opacity only keeps it on the compositor, so a dense passage costs
- * no main-thread work no matter how many keys flash at once. */
-@keyframes key-strike {
-  from {
-    opacity: 0.85;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-.key-strike {
-  /* Background colour comes from the key's own pitch hue, set inline. The
-     flash is that same colour overbrightened, so a strike reads as the key
-     surging rather than blinking to a different colour. */
-  opacity: 0;
-  filter: brightness(1.9);
-  animation: key-strike 80ms ease-out;
-}
-
-/* Honour a reduced-motion preference globally. The keyboard glow and the
-   sidebar slide are the only substantial motion in the app; both are purely
-   decorative, so removing them costs nothing functionally. */
+/* Honour a reduced-motion preference globally. The sidebar slide is the only
+   substantial CSS motion left in the app and is purely decorative, so removing
+   it costs nothing functionally. The keyboard's strike flash is painted on the
+   canvas, which reads the same preference in JS (see MidiVisualizer). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -246,23 +220,15 @@ code {
   font-family: var(--font-mono);
 }
 
-/* The note stage sits above the keyboard strip and takes the remaining
- * vertical space. It is sized in JS from a ResizeObserver (see
- * MidiVisualizer). Lane striping is painted by the canvas rather than a CSS
- * gradient: lane columns must line up with the piano keys below them, and
- * that geometry is derived at runtime from the container width, which a fixed
- * background-size cannot track. */
-.canvas-container {
-  position: relative;
+/* One canvas carries both the note stage and the keyboard strip below it, so
+ * lane columns and piano keys share a single coordinate space and cannot drift
+ * apart. It is sized in JS from a ResizeObserver (see MidiVisualizer); the
+ * element itself just fills its frame. */
+.canvas-element {
+  display: block;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
-  background-color: var(--color-lane);
-  overflow: hidden;
-}
-
-.canvas-element {
-  display: block;
-  width: 100%;
   height: 100%;
+  background-color: var(--color-lane);
 }

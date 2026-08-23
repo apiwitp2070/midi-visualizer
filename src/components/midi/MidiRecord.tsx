@@ -61,8 +61,6 @@ export default function MidiRecord() {
       setNoteOnStack([]);
       setNoteOffStack([]);
 
-      console.log("final midi data", newMidi);
-
       if (isExporting) {
         setIsExporting(false);
 
@@ -148,17 +146,7 @@ export default function MidiRecord() {
         } else {
           timingResult = "miss";
           durationResult = "miss";
-          console.log("score for note", curr.midi, curr.name, ": MISS");
         }
-
-        console.log(
-          "score for note",
-          curr.midi,
-          curr.name,
-          "is :",
-          score,
-          timingResult
-        );
 
         acc += score;
         scoreResult[timingResult as "perfect" | "early" | "late" | "miss"] += 1;
@@ -187,7 +175,6 @@ export default function MidiRecord() {
         setIsExporting(true);
       }
 
-      console.log("start record, play the keyboard!");
       setIsRecording(true);
       setCanvasState("PLAY");
       setStartTime(new Date().valueOf());

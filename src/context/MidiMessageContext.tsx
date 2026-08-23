@@ -26,8 +26,6 @@ export const MidiMessageProvider = ({
     (midiMessage: MIDIMessage) => {
       const [command, note, velocity] = midiMessage.data;
 
-      console.log("note :>> ", note);
-
       if (command === 144 && isRecording) {
         if (velocity > 0) {
           noteOnStack.push({

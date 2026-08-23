@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { cn } from "@/utils/cn";
 import {
   buildKeyboardLayout,
   config,
@@ -17,13 +16,16 @@ import { getNoteColor, type ThemeColors } from "@/utils/themeColors";
  * The value is what distinguishes a retrigger from a held note: both keep the
  * key lit, but only a retrigger changes the start time.
  */
-export type ActiveNotes = ReadonlyMap<number, number>;
-
-/** Stable empty map, so an idle keyboard does not allocate one per render. */
-const EMPTY_NOTES: ActiveNotes = new Map();
+type ActiveNotes = Map<number, number>;
 
 /** Thickness of the playhead line, in CSS px. */
 const PLAYHEAD_THICKNESS = 1.5;
+
+/** Duration of a key's strike flash, in seconds. Mirrors the old CSS keyframe. */
+const STRIKE_SECONDS = 0.08;
+
+/** Peak opacity of that flash, matching the keyframe's `from`. */
+const STRIKE_ALPHA = 0.85;
 
 /** Tracks the rendered pixel size of an element, for a size-driven canvas. */
 const useElementSize = <T extends HTMLElement>() => {
@@ -62,34 +64,48 @@ const MidiVisualizer = () => {
   const themeColors = useThemeColors();
 
   const [frameRef, frameSize] = useElementSize<HTMLDivElement>();
-  const [stageRef, stageSize] = useElementSize<HTMLDivElement>();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
-  // In a ref because the draw effect re-runs on resize and theme change;
-  // re-seeding the origin there would snap visuals back to t=0 while the
-  // audio's already-scheduled timeouts kept going.
+  // In a ref because the draw loop must survive resize and theme changes;
+  // re-seeding the origin would snap visuals back to t=0 while the audio's
+  // already-scheduled notes kept going.
   const startTimeRef = useRef<number | null>(null);
   const prevTimeRef = useRef<number | null>(null);
-  const [activeNotes, setActiveNotes] = useState<ActiveNotes>(new Map());
+  // A ref, not state: this changes on almost every frame during playback, and
+  // committing it to React would re-render the component 60 times a second.
+  // The draw loop is the only reader, so nothing needs a render to see it.
+  const activeNotesRef = useRef<ActiveNotes>(new Map());
 
-  // Both the DOM keys and the canvas note columns read from this one layout,
+  // The keyboard is part of the canvas, so its depth has to be known before
+  // sizing the drawing surface. Measured from the outer frame, since the
+  // stage's height is derived from this value.
+  const keyboardDepth = Math.round(
+    Math.max(44, Math.min(config.keyboardDepth, frameSize.height * 0.18)),
+  );
+
+  // The canvas fills the frame; the note stage is what remains above the keys.
+  const canvasWidth = frameSize.width;
+  const canvasHeight = frameSize.height;
+  const stageHeight = Math.max(canvasHeight - keyboardDepth, 0);
+
+  // Both the keyboard and the canvas note columns read from this one layout,
   // which is what stops them drifting apart.
   const layout = useMemo(() => {
     const natural = buildKeyboardLayout();
-    if (!stageSize.width) return natural;
+    if (!canvasWidth) return natural;
 
     const whiteKeyCount = natural.totalSize / natural.whiteKeySize;
     // Unclamped on purpose: a minimum key size would push the keyboard past
-    // the stage edge, where overflow:hidden would clip the top octaves and
-    // leave notes falling into columns with no key under them. Fitting wins.
-    const fitted = stageSize.width / whiteKeyCount;
+    // the stage edge, where clipping would hide the top octaves and leave
+    // notes falling into columns with no key under them. Fitting wins.
+    const fitted = canvasWidth / whiteKeyCount;
     return buildKeyboardLayout(fitted);
-  }, [stageSize.width]);
+  }, [canvasWidth]);
 
   // Feeds songDelay, which the audio is scheduled against. Must stay equal to
   // `playheadY` in the draw effect or sound and visuals drift apart.
-  const travelDistance = stageSize.height
-    ? stageSize.height - config.playheadInset
+  const travelDistance = stageHeight
+    ? stageHeight - config.playheadInset
     : 0;
 
   useEffect(() => {
@@ -102,7 +118,7 @@ const MidiVisualizer = () => {
   );
 
   // getComputedStyle forces a style recalculation, so keep it out of the draw
-  // effect, which re-runs on every resize frame.
+  // loop, which runs every frame.
   const noteFont = useMemo(() => {
     const monoFamily =
       getComputedStyle(document.documentElement)
@@ -111,6 +127,69 @@ const MidiVisualizer = () => {
     return `600 10px ${monoFamily}`;
   }, []);
 
+  // Everything the draw loop reads, behind one ref. The loop is started by an
+  // effect keyed only on playback state, so without this a resize or theme
+  // change would tear the loop down and rebuild it mid-song.
+  const sceneRef = useRef({
+    layout,
+    themeColors,
+    visibleNotes,
+    noteFont,
+    canvasWidth,
+    canvasHeight,
+    stageHeight,
+    keyboardDepth,
+  });
+  // Written in an effect, not during render: a ref mutated mid-render is not
+  // safe under concurrent rendering, and the draw loop only needs the values
+  // that were actually committed.
+  useEffect(() => {
+    sceneRef.current = {
+      layout,
+      themeColors,
+      visibleNotes,
+      noteFont,
+      canvasWidth,
+      canvasHeight,
+      stageHeight,
+      keyboardDepth,
+    };
+  }, [
+    layout,
+    themeColors,
+    visibleNotes,
+    noteFont,
+    canvasWidth,
+    canvasHeight,
+    stageHeight,
+    keyboardDepth,
+  ]);
+
+  const reducedMotion = useRef(false);
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => (reducedMotion.current = query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+
+  // Sizing the backing store is a separate concern from drawing: it must not
+  // happen inside the animation loop, where it would clear the canvas and
+  // reset the transform on every frame.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !canvasWidth || !canvasHeight) return;
+
+    // Render at device resolution so notes and labels stay crisp on retina,
+    // then work in CSS pixels for the rest of the drawing code.
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(canvasWidth * dpr);
+    canvas.height = Math.round(canvasHeight * dpr);
+    const ctx = canvas.getContext("2d");
+    ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }, [canvasWidth, canvasHeight]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -118,248 +197,92 @@ const MidiVisualizer = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const { width, height } = stageSize;
-    if (!width || !height) return;
-
-    // Render at device resolution so notes and labels stay crisp on retina,
-    // then work in CSS pixels for the rest of the drawing code.
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    const {
-      pixelsPerSecond,
-      noteInset,
-      noteRadius,
-      noteTailGap,
-      playheadInset,
-    } = config;
-    // Where a note is played. Note positions and the audio lead time are both
-    // derived from this, so it is what keeps sound and visuals agreeing.
-    const playheadY = height - playheadInset;
-
-    function drawLanes(ctx: CanvasRenderingContext2D, colors: ThemeColors) {
-      layout.keys.forEach((key) => {
-        if (key.isBlack) return;
-        // Banded by pitch class, not column index, so the pattern repeats per
-        // octave instead of drifting when the keyboard is scaled to fit.
-        const pitchClass = ((key.midi % 12) + 12) % 12;
-        ctx.fillStyle =
-          pitchClass === 0
-            ? colors.laneC
-            : pitchClass < 5
-              ? colors.lane
-              : colors.laneAlt;
-        ctx.fillRect(key.offset, 0, key.size, height);
+    const paint = (currentTime: number | null) => {
+      drawScene(ctx, sceneRef.current, currentTime, activeNotesRef.current, {
+        reducedMotion: reducedMotion.current,
       });
-    }
+    };
 
-    function drawPlayhead(ctx: CanvasRenderingContext2D, colors: ThemeColors) {
-      ctx.save();
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = colors.playhead;
-      // Drawn inward from playheadY so the line stays on canvas when the
-      // playhead sits on the bottom edge.
-      ctx.fillRect(
-        0,
-        playheadY - PLAYHEAD_THICKNESS,
-        width,
-        PLAYHEAD_THICKNESS,
-      );
-      ctx.restore();
-    }
-
-    function drawNote(
-      ctx: CanvasRenderingContext2D,
-      note: Note,
-      currentTime: number,
-      colors: ThemeColors,
-    ) {
-      const key = layout.byMidi.get(note.midi);
-      // Notes outside the rendered key range have nowhere to land.
-      if (!key) return;
-
-      // startY is the note's leading edge — the point that lands on the
-      // playhead. The body trails upward behind it, so a held note is still
-      // crossing after its start has passed.
-      const startY = playheadY - (note.time - currentTime) * pixelsPerSecond;
-      const noteLength = Math.max(note.duration * pixelsPerSecond, 3);
-      const top = startY - noteLength;
-
-      if (startY < 0 || top > height) return;
-
-      const fill = getNoteColor(colors, note.midi);
-      const noteWidth = Math.max(key.size - noteInset * 2, 3);
-      const x = key.offset + noteInset;
-
-      // Trimmed off the tail so a repeated note reads as two notes rather than
-      // one long one. Taken from the trailing edge, leaving the leading edge
-      // on the playhead so the note still lands when it sounds. Short notes
-      // scale the trim instead of taking it whole, which would erase them.
-      const drawnLength =
-        noteLength > noteTailGap * 2
-          ? noteLength - noteTailGap
-          : Math.max(noteLength * 0.6, 2);
-      const drawnTop = top + (noteLength - drawnLength);
-
-      ctx.fillStyle = fill;
-      ctx.beginPath();
-      ctx.roundRect(
-        x,
-        drawnTop,
-        noteWidth,
-        drawnLength,
-        Math.min(noteRadius, drawnLength / 2),
-      );
-      ctx.fill();
-
-      // Labels drop out rather than overflow when a note is too small.
-      if (noteWidth >= 22 && drawnLength >= 26) {
-        ctx.fillStyle = colors.noteFg;
-        ctx.font = noteFont;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(
-          note.name,
-          x + noteWidth / 2,
-          drawnTop + drawnLength / 2,
-        );
-      }
-    }
-
-    function draw(
-      ctx: CanvasRenderingContext2D,
-      currentTime: number,
-      colors: ThemeColors,
-    ) {
-      ctx.clearRect(0, 0, width, height);
-      drawLanes(ctx, colors);
-      visibleNotes.forEach((note) => {
-        drawNote(ctx, note, currentTime, colors);
-      });
-      // Painted last so a note crossing the line cannot overdraw it.
-      drawPlayhead(ctx, colors);
-    }
-
-    function updateActiveNotes(currentTime: number) {
-      // Tested against the interval since the last frame, not this instant: a
-      // note shorter than one frame would otherwise never light its key.
-      const prevTime = prevTimeRef.current ?? currentTime;
-      prevTimeRef.current = currentTime;
-
-      // Keyed by pitch, valued by the note's start time. The value is what
-      // makes a repeated note visible: two notes on one key are both "lit",
-      // but the changing start time tells the key it was struck again.
-      const newActiveNotes = new Map<number, number>();
-      visibleNotes.forEach((note) => {
-        if (note.time <= currentTime && note.time + note.duration >= prevTime) {
-          // On overlap, the later start wins so a retrigger always registers.
-          const existing = newActiveNotes.get(note.midi);
-          if (existing === undefined || note.time > existing) {
-            newActiveNotes.set(note.midi, note.time);
-          }
-        }
-      });
-
-      setActiveNotes((prev) => {
-        // Compares start times, not just which keys are lit — a retrigger
-        // keeps the same key lit and would otherwise look like no change.
-        if (
-          prev.size === newActiveNotes.size &&
-          [...prev].every(([midi, start]) => newActiveNotes.get(midi) === start)
-        ) {
-          return prev;
-        }
-        return newActiveNotes;
-      });
-    }
-
-    function startAnimation() {
-      if (startTimeRef.current === null) {
-        startTimeRef.current = performance.now();
-      }
-      const startTime = startTimeRef.current;
-
-      // Starts the clock before zero so a note at time 0 falls the length of
-      // the stage instead of appearing on the playhead. Must stay in step with
-      // `songDelay`, which the audio is scheduled against — except for
-      // AUDIO_LEAD_MS, left out here so sound arrives fractionally ahead of
-      // the key lighting up.
-      const leadIn = playheadY / pixelsPerSecond + DELAY_OFFSET / 1000;
-
-      function animate() {
-        if (!ctx || canvasState === "STOP") return;
-        const currentTime = (performance.now() - startTime) / 1000 - leadIn;
-        updateActiveNotes(currentTime);
-        draw(ctx, currentTime, themeColors);
-        animationRef.current = requestAnimationFrame(animate);
-      }
-      animate();
-    }
-
-    if (canvasState === "PLAY") {
-      startAnimation();
-    } else {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+    if (canvasState !== "PLAY") {
       // Released so the next Play starts a fresh clock.
       startTimeRef.current = null;
       prevTimeRef.current = null;
+      activeNotesRef.current = new Map();
       // Idle still paints, so the stage reads as an instrument waiting.
-      ctx.clearRect(0, 0, width, height);
-      drawLanes(ctx, themeColors);
-      drawPlayhead(ctx, themeColors);
+      paint(null);
+      return;
     }
 
+    if (startTimeRef.current === null) {
+      startTimeRef.current = performance.now();
+    }
+    const startTime = startTimeRef.current;
+
+    // Starts the clock before zero so a note at time 0 falls the length of
+    // the stage instead of appearing on the playhead. Must stay in step with
+    // `songDelay`, which the audio is scheduled against — except for
+    // AUDIO_LEAD_MS, left out here so sound arrives fractionally ahead of
+    // the key lighting up.
+    const leadIn =
+      (sceneRef.current.stageHeight - config.playheadInset) /
+        config.pixelsPerSecond +
+      DELAY_OFFSET / 1000;
+
+    const animate = () => {
+      const currentTime = (performance.now() - startTime) / 1000 - leadIn;
+      updateActiveNotes(
+        sceneRef.current.visibleNotes,
+        activeNotesRef.current,
+        currentTime,
+        prevTimeRef,
+      );
+      paint(currentTime);
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    // Scheduled rather than called straight through, so animationRef always
+    // holds the live frame — a synchronous first call would run one frame
+    // before the ref was set, leaving that frame uncancellable.
+    animationRef.current = requestAnimationFrame(animate);
+
     return () => {
-      if (animationRef.current) {
+      if (animationRef.current !== null) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
-    // themeColors is a dep so a theme switch repaints immediately rather than
-    // waiting for the next playback change.
-  }, [canvasState, visibleNotes, noteFont, themeColors, stageSize, layout]);
+  }, [canvasState]);
 
-  // Derived rather than reset in the effect: when playback stops, no key is
-  // lit by definition, so there is no need to write state to say so.
-  const litNotes = canvasState === "PLAY" ? activeNotes : EMPTY_NOTES;
-
-  // Measured from the outer frame, not the stage: the stage's height depends
-  // on this value, so reading it back would be a feedback loop.
-  const keyboardDepth = Math.round(
-    Math.max(44, Math.min(config.keyboardDepth, frameSize.height * 0.18)),
-  );
+  // A theme switch or resize while stopped has no running loop to repaint the
+  // idle stage, so it is repainted here.
+  useEffect(() => {
+    if (canvasState === "PLAY") return;
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx || !canvasWidth || !canvasHeight) return;
+    drawScene(ctx, sceneRef.current, null, new Map(), {
+      reducedMotion: reducedMotion.current,
+    });
+  }, [canvasState, themeColors, layout, canvasWidth, canvasHeight, visibleNotes]);
 
   return (
     <div
       ref={frameRef}
       className="relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-surface-sunken shadow-lg"
     >
-      <div ref={stageRef} className="canvas-container">
-        <canvas ref={canvasRef} className="canvas-element" />
+      <canvas ref={canvasRef} className="canvas-element" />
 
-        {!originalMidi && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="rounded-lg border border-border bg-surface-raised/90 px-6 py-4 text-center shadow-lg backdrop-blur-sm">
-              <p className="font-display text-lg font-semibold tracking-tight text-text">
-                No file loaded
-              </p>
-              <p className="mt-1 text-sm text-text-muted">
-                Choose a MIDI file to start playing.
-              </p>
-            </div>
+      {!originalMidi && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="rounded-lg border border-border bg-surface-raised/90 px-6 py-4 text-center shadow-lg backdrop-blur-sm">
+            <p className="font-display text-lg font-semibold tracking-tight text-text">
+              No file loaded
+            </p>
+            <p className="mt-1 text-sm text-text-muted">
+              Choose a MIDI file to start playing.
+            </p>
           </div>
-        )}
-      </div>
-
-      <Keyboard
-        layout={layout}
-        activeNotes={litNotes}
-        colors={themeColors}
-        depth={keyboardDepth}
-      />
+        </div>
+      )}
     </div>
   );
 };
@@ -368,108 +291,321 @@ export default MidiVisualizer;
 
 // helpers
 
-interface KeyboardProps {
+interface Scene {
   layout: KeyboardLayout;
-  activeNotes: ActiveNotes;
-  colors: ThemeColors;
-  /** Depth of the keyboard strip, in px. Black keys occupy a fraction of it. */
-  depth: number;
+  themeColors: ThemeColors;
+  visibleNotes: Note[];
+  noteFont: string;
+  canvasWidth: number;
+  canvasHeight: number;
+  stageHeight: number;
+  keyboardDepth: number;
+}
+
+/**
+ * Recomputes which keys are lit, in place.
+ *
+ * Mutates `active` rather than building a new map each frame: at 60fps the
+ * allocation is the whole cost of this function, and nothing outside the draw
+ * loop observes the map.
+ */
+function updateActiveNotes(
+  notes: Note[],
+  active: ActiveNotes,
+  currentTime: number,
+  prevTimeRef: React.RefObject<number | null>,
+) {
+  // Tested against the interval since the last frame, not this instant: a
+  // note shorter than one frame would otherwise never light its key.
+  const prevTime = prevTimeRef.current ?? currentTime;
+  prevTimeRef.current = currentTime;
+
+  active.clear();
+  for (const note of notes) {
+    if (note.time <= currentTime && note.time + note.duration >= prevTime) {
+      // On overlap, the later start wins so a retrigger always registers.
+      const existing = active.get(note.midi);
+      if (existing === undefined || note.time > existing) {
+        active.set(note.midi, note.time);
+      }
+    }
+  }
+}
+
+/**
+ * Paints one whole frame: lanes, falling notes, playhead, and the keyboard.
+ *
+ * `currentTime` of null means the stage is idle — lanes, playhead and unlit
+ * keys, with no notes in flight.
+ */
+function drawScene(
+  ctx: CanvasRenderingContext2D,
+  scene: Scene,
+  currentTime: number | null,
+  active: ActiveNotes,
+  options: { reducedMotion: boolean },
+) {
+  const {
+    layout,
+    themeColors: colors,
+    visibleNotes,
+    noteFont,
+    canvasWidth: width,
+    canvasHeight: height,
+    stageHeight,
+    keyboardDepth,
+  } = scene;
+  if (!width || !height) return;
+
+  // Where a note is played. Note positions and the audio lead time are both
+  // derived from this, so it is what keeps sound and visuals agreeing.
+  const playheadY = stageHeight - config.playheadInset;
+
+  ctx.clearRect(0, 0, width, height);
+
+  // The stage is clipped so a note never paints over the keyboard below it.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, width, stageHeight);
+  ctx.clip();
+
+  drawLanes(ctx, layout, colors, stageHeight);
+  if (currentTime !== null) {
+    visibleNotes.forEach((note) => {
+      drawNote(
+        ctx,
+        note,
+        currentTime,
+        colors,
+        layout,
+        playheadY,
+        stageHeight,
+        noteFont,
+      );
+    });
+  }
+
+  // Painted last so a note crossing the line cannot overdraw it.
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = colors.playhead;
+  // Drawn inward from playheadY so the line stays on canvas when the playhead
+  // sits on the stage's bottom edge.
+  ctx.fillRect(0, playheadY - PLAYHEAD_THICKNESS, width, PLAYHEAD_THICKNESS);
+  ctx.restore();
+
+  drawKeyboard(
+    ctx,
+    layout,
+    colors,
+    active,
+    currentTime,
+    stageHeight,
+    keyboardDepth,
+    width,
+    options.reducedMotion,
+  );
+}
+
+function drawLanes(
+  ctx: CanvasRenderingContext2D,
+  layout: KeyboardLayout,
+  colors: ThemeColors,
+  stageHeight: number,
+) {
+  layout.keys.forEach((key) => {
+    if (key.isBlack) return;
+    // Banded by pitch class, not column index, so the pattern repeats per
+    // octave instead of drifting when the keyboard is scaled to fit.
+    const pitchClass = ((key.midi % 12) + 12) % 12;
+    ctx.fillStyle =
+      pitchClass === 0
+        ? colors.laneC
+        : pitchClass < 5
+          ? colors.lane
+          : colors.laneAlt;
+    ctx.fillRect(key.offset, 0, key.size, stageHeight);
+  });
+}
+
+function drawNote(
+  ctx: CanvasRenderingContext2D,
+  note: Note,
+  currentTime: number,
+  colors: ThemeColors,
+  layout: KeyboardLayout,
+  playheadY: number,
+  stageHeight: number,
+  noteFont: string,
+) {
+  const key = layout.byMidi.get(note.midi);
+  // Notes outside the rendered key range have nowhere to land.
+  if (!key) return;
+
+  const { pixelsPerSecond, noteInset, noteRadius, noteTailGap } = config;
+
+  // startY is the note's leading edge — the point that lands on the
+  // playhead. The body trails upward behind it, so a held note is still
+  // crossing after its start has passed.
+  const startY = playheadY - (note.time - currentTime) * pixelsPerSecond;
+  const noteLength = Math.max(note.duration * pixelsPerSecond, 3);
+  const top = startY - noteLength;
+
+  if (startY < 0 || top > stageHeight) return;
+
+  const fill = getNoteColor(colors, note.midi);
+  const noteWidth = Math.max(key.size - noteInset * 2, 3);
+  const x = key.offset + noteInset;
+
+  // Trimmed off the tail so a repeated note reads as two notes rather than
+  // one long one. Taken from the trailing edge, leaving the leading edge
+  // on the playhead so the note still lands when it sounds. Short notes
+  // scale the trim instead of taking it whole, which would erase them.
+  const drawnLength =
+    noteLength > noteTailGap * 2
+      ? noteLength - noteTailGap
+      : Math.max(noteLength * 0.6, 2);
+  const drawnTop = top + (noteLength - drawnLength);
+
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.roundRect(
+    x,
+    drawnTop,
+    noteWidth,
+    drawnLength,
+    Math.min(noteRadius, drawnLength / 2),
+  );
+  ctx.fill();
+
+  // Labels drop out rather than overflow when a note is too small.
+  if (noteWidth >= 22 && drawnLength >= 26) {
+    ctx.fillStyle = colors.noteFg;
+    ctx.font = noteFont;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(note.name, x + noteWidth / 2, drawnTop + drawnLength / 2);
+  }
 }
 
 /**
  * The piano: a horizontal strip below the note stage, low notes left.
  *
  * An active key lights in the same pitch-class colour as the note that landed
- * on it, which is what ties a falling note to the key it belongs to.
+ * on it, which is what ties a falling note to the key it belongs to. Drawn on
+ * the canvas rather than as DOM nodes so playback costs no React renders —
+ * 88 keys re-rendering per note was the visualizer's dominant frame cost.
  */
-const Keyboard = ({ layout, activeNotes, colors, depth }: KeyboardProps) => {
+function drawKeyboard(
+  ctx: CanvasRenderingContext2D,
+  layout: KeyboardLayout,
+  colors: ThemeColors,
+  active: ActiveNotes,
+  currentTime: number | null,
+  top: number,
+  depth: number,
+  width: number,
+  reducedMotion: boolean,
+) {
+  ctx.save();
+  ctx.translate(0, top);
+
+  ctx.fillStyle = colors.surfaceSunken;
+  ctx.fillRect(0, 0, width, depth);
+
   // Kept as low as the text allows — the octave markers are the only thing
   // orienting the eye along the strip.
   const labelable = layout.whiteKeySize >= 12;
 
-  const renderKey = (key: KeyLayout) => {
-    const startedAt = activeNotes.get(key.midi);
-    const isActive = startedAt !== undefined;
-    const glow = getNoteColor(colors, key.midi);
-    // C only: enough to orient by octave without naming every key.
-    const showLabel = !key.isBlack && key.midi % 12 === 0 && labelable;
+  // White keys first so the black keys paint over their seams.
+  layout.keys.forEach((key) => {
+    if (key.isBlack) return;
+    drawKey(ctx, key, colors, active, currentTime, depth, labelable, reducedMotion);
+  });
+  layout.keys.forEach((key) => {
+    if (!key.isBlack) return;
+    drawKey(ctx, key, colors, active, currentTime, depth, labelable, reducedMotion);
+  });
 
-    return (
-      <div
-        key={key.midi}
-        style={{
-          left: key.offset,
-          width: key.size,
-          height: depth * key.depth,
-          ...(isActive
-            ? { backgroundColor: glow, boxShadow: `0 0 14px ${glow}` }
-            : {}),
-        }}
-        className={cn(
-          "absolute top-0 flex items-end justify-center overflow-hidden pb-1",
-          // The sustained lit colour. The strike itself is the .key-strike
-          // overlay above, which is what makes a repeated note visible.
-          "transition-[background-color,box-shadow] duration-80",
-          key.isBlack
-            ? "z-10 rounded-b-[3px] bg-key-black shadow-[0_2px_5px_rgba(0,0,0,.5)]"
-            : "z-0 rounded-b-[2px] border-r border-key-border/25 bg-key-white",
-        )}
-      >
-        {/* Keyed by the note's start time so a repeated note remounts this
-            element and replays the flash. Without the remount a jack would
-            hold one steady light, since the key never stops being active. */}
-        {isActive && (
-          <span
-            key={startedAt}
-            style={{ backgroundColor: glow }}
-            className="key-strike pointer-events-none absolute inset-0"
-            aria-hidden
-          />
-        )}
+  // The strip's top edge, matching the border the DOM keyboard used to carry.
+  ctx.fillStyle = colors.keyBorder;
+  ctx.fillRect(0, 0, width, 1);
 
-        {showLabel && (
-          <span
-            className={cn(
-              "relative font-mono text-[9px] leading-none tracking-tight",
-              isActive ? "text-note-fg" : "text-text-muted",
-            )}
-          >
-            {midiToNoteName(key.midi)}
-          </span>
-        )}
-      </div>
-    );
-  };
+  ctx.restore();
+}
 
-  return (
-    <div
-      className="relative w-full shrink-0 border-t border-key-border bg-surface-sunken"
-      style={{ height: depth }}
-      aria-hidden
-    >
-      {/* White keys first so the black keys paint over their seams. */}
-      {layout.keys.filter((key) => !key.isBlack).map(renderKey)}
-      {layout.keys.filter((key) => key.isBlack).map(renderKey)}
-    </div>
-  );
-};
+function drawKey(
+  ctx: CanvasRenderingContext2D,
+  key: KeyLayout,
+  colors: ThemeColors,
+  active: ActiveNotes,
+  currentTime: number | null,
+  depth: number,
+  labelable: boolean,
+  reducedMotion: boolean,
+) {
+  const startedAt = active.get(key.midi);
+  const isActive = startedAt !== undefined;
+  const glow = getNoteColor(colors, key.midi);
+  const keyHeight = depth * key.depth;
+
+  ctx.fillStyle = isActive
+    ? glow
+    : key.isBlack
+      ? colors.keyBlack
+      : colors.keyWhite;
+  ctx.fillRect(key.offset, 0, key.size, keyHeight);
+
+  if (!key.isBlack) {
+    // The seam between adjacent white keys.
+    ctx.fillStyle = colors.keyBorder;
+    ctx.globalAlpha = 0.25;
+    ctx.fillRect(key.offset + key.size - 1, 0, 1, keyHeight);
+    ctx.globalAlpha = 1;
+  }
+
+  // The strike flash. A held key would otherwise show one steady light, with
+  // nothing marking a repeated note; this replays per note start, which is
+  // what makes a retrigger visible.
+  if (isActive && currentTime !== null && !reducedMotion) {
+    const age = currentTime - startedAt;
+    if (age >= 0 && age < STRIKE_SECONDS) {
+      ctx.save();
+      // Overbrightened rather than a different colour, so a strike reads as
+      // the key surging rather than blinking.
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = STRIKE_ALPHA * (1 - age / STRIKE_SECONDS);
+      ctx.fillStyle = glow;
+      ctx.fillRect(key.offset, 0, key.size, keyHeight);
+      ctx.restore();
+    }
+  }
+
+  // C only: enough to orient by octave without naming every key.
+  if (!key.isBlack && key.midi % 12 === 0 && labelable) {
+    ctx.fillStyle = isActive ? colors.noteFg : colors.textMuted;
+    ctx.font = "600 9px ui-monospace, monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(midiToNoteName(key.midi), key.center, keyHeight - 4);
+  }
+}
+
+const NOTE_NAMES = [
+  "C",
+  "C#",
+  "D",
+  "D#",
+  "E",
+  "F",
+  "F#",
+  "G",
+  "G#",
+  "A",
+  "A#",
+  "B",
+];
 
 const midiToNoteName = (midi: number) => {
-  const noteNames = [
-    "C",
-    "C#",
-    "D",
-    "D#",
-    "E",
-    "F",
-    "F#",
-    "G",
-    "G#",
-    "A",
-    "A#",
-    "B",
-  ];
   const octave = Math.floor((midi - 12) / 12);
-  const note = noteNames[midi % 12];
-  return `${note}${octave}`;
+  return `${NOTE_NAMES[midi % 12]}${octave}`;
 };

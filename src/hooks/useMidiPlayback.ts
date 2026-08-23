@@ -1,74 +1,34 @@
-import currency from "currency.js";
-import { useMIDIOutputs, useMIDIOutput } from "@react-midi/hooks";
 import { useMidiVisualization } from "@/context/useMidiVisualization";
 import { useSoundFont } from "@/context/useSoundFont";
 
+/**
+ * The play/stop control surface. Deliberately does no scheduling: the audio is
+ * driven by MidiScheduler, mounted once near the root. Multiple components use
+ * this hook, so anything that schedules from here would run once per consumer
+ * and play every note twice.
+ */
 export const useMidiPlayback = () => {
-  const { piano } = useSoundFont();
-  const { output } = useMIDIOutputs();
-  const { noteOn, noteOff } = useMIDIOutput();
-  const {
-    originalMidi,
-    canvasState,
-    setCanvasState,
-    midiNotes,
-    songDelay,
-    hasMeasuredStage,
-  } = useMidiVisualization();
+  const { ac } = useSoundFont();
+  const { originalMidi, canvasState, setCanvasState, hasMeasuredStage } =
+    useMidiVisualization();
 
   const isPlaying = canvasState === "PLAY";
-
   const canPlay = Boolean(originalMidi) && hasMeasuredStage;
 
-  const togglePlayback = async () => {
+  const togglePlayback = () => {
     if (!canPlay) return;
 
-    if (canvasState === "STOP") {
-      setCanvasState("PLAY");
+    // The AudioContext is constructed at module load, long before any user
+    // gesture, so the browser starts it suspended — and a suspended context's
+    // currentTime never advances, which the scheduler's whole clock rests on.
+    //
+    // This click is the gesture that permits resuming, so it has to happen
+    // here rather than in the scheduler's effect. Not awaited: awaiting would
+    // continue on a later task, outside the gesture, and the resume would be
+    // refused.
+    if (ac.state === "suspended") void ac.resume();
 
-      midiNotes.forEach((note, index, arr) => {
-        const noteOnTimeout = currency(note.time).multiply(
-          currency(1000),
-        ).value;
-        const noteOffTimeout = currency(note.duration).multiply(
-          currency(1000),
-        ).value;
-
-        setTimeout(() => {
-          piano.play(note.name, note.time - songDelay, {
-            duration: note.duration,
-            gain: note.velocity,
-            release: 1,
-          });
-
-          // for MIDI device
-          if (output && noteOff && noteOn) {
-            noteOn(note.midi, { velocity: note.velocity * 127 });
-
-            setTimeout(() => {
-              noteOff(note.midi, { velocity: note.velocity * 127 });
-            }, noteOffTimeout);
-          }
-
-          // finish playing
-          if (index === arr.length - 1) {
-            setTimeout(() => {
-              setTimeout(() => {
-                setCanvasState("STOP");
-                piano.stop();
-              }, 1000);
-            }, noteOffTimeout);
-          }
-        }, songDelay + noteOnTimeout);
-      });
-    } else {
-      setCanvasState("STOP");
-
-      const highestTimeoutId = setTimeout(() => {}, 0) as unknown as number;
-      for (let i = 0; i < highestTimeoutId; i++) {
-        clearTimeout(i);
-      }
-    }
+    setCanvasState((prev) => (prev === "STOP" ? "PLAY" : "STOP"));
   };
 
   return { togglePlayback, isPlaying, canPlay };

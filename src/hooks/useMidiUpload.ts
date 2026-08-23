@@ -10,8 +10,7 @@ export const useMidiUpload = () => {
     const file = event.target.files?.[0];
 
     if (file) {
-      const fileUrl = URL.createObjectURL(file);
-      const midi = await Midi.fromUrl(fileUrl);
+      const midi = new Midi(new Uint8Array(await file.arrayBuffer()));
 
       setOriginalMidi(midi);
       setDefaultMidiBPM(midi.header.tempos[0].bpm);

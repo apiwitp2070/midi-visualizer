@@ -8,6 +8,7 @@ import { SoundFontProvider } from "./context/SoundFontProvider.tsx";
 import { MidiVisualizerProvider } from "./context/MidiVisualizeContext.tsx";
 import { MidiMessageProvider } from "./context/MidiMessageContext.tsx";
 import { ThemeProvider } from "./context/ThemeProvider.tsx";
+import MidiScheduler from "./components/midi/MidiScheduler.tsx";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -16,6 +17,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <SoundFontProvider>
           <MidiVisualizerProvider>
             <MidiMessageProvider>
+              {/* Mounted once, on purpose: it schedules audio, so a second
+                  instance would play every note twice. */}
+              <MidiScheduler />
+
               {/* Header sits inside MidiVisualizerProvider so its status line
                   can read the loaded file and playback state. */}
               <Header />
