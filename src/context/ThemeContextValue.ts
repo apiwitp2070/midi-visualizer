@@ -14,15 +14,20 @@ export const THEME_STORAGE_KEY = "midi-theme";
 
 const DARK_MEDIA_QUERY = "(prefers-color-scheme: dark)";
 
+export interface RevealOrigin {
+  x: number;
+  y: number;
+}
+
 export interface ThemeContextProps {
   theme: Theme;
   /** Flips between light and dark. */
-  toggleTheme: () => void;
-  setTheme: (theme: Theme) => void;
+  toggleTheme: (origin?: RevealOrigin) => void;
+  setTheme: (theme: Theme, origin?: RevealOrigin) => void;
 }
 
 export const ThemeContext = createContext<ThemeContextProps | undefined>(
-  undefined
+  undefined,
 );
 
 const prefersDark = (): boolean =>
@@ -65,5 +70,50 @@ export const applyThemeInstantly = (theme: Theme): void => {
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => root.classList.remove("theme-switching"));
+  });
+};
+
+const REVEAL_DURATION_MS = 600;
+
+const prefersReducedMotion = (): boolean =>
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+export const revealTheme = (apply: () => void, origin?: RevealOrigin): void => {
+  if (!origin || !document.startViewTransition || prefersReducedMotion()) {
+    apply();
+    return;
+  }
+
+  const transition = document.startViewTransition(apply);
+
+  void transition.ready.then(() => {
+    const { innerWidth: width, innerHeight: height } = window;
+
+    const x = (100 * origin.x) / width;
+    const y = (100 * origin.y) / height;
+
+    const radius =
+      (100 *
+        Math.SQRT2 *
+        Math.hypot(
+          Math.max(origin.x, width - origin.x),
+          Math.max(origin.y, height - origin.y),
+        )) /
+      Math.hypot(width, height);
+
+    document.documentElement.animate(
+      {
+        clipPath: [
+          `circle(0% at ${x}% ${y}%)`,
+          `circle(${radius}% at ${x}% ${y}%)`,
+        ],
+      },
+      {
+        duration: REVEAL_DURATION_MS,
+        easing: "cubic-bezier(0.65, 0, 0.35, 1)",
+        pseudoElement: "::view-transition-new(root)",
+      },
+    );
   });
 };

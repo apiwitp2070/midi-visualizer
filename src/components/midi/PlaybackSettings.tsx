@@ -3,15 +3,25 @@ import Accordion from "@/components/common/Accordion";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  MinusIcon,
+  PlusIcon,
+} from "@/components/common/icons";
+import {
   DEFAULT_PLAYBACK_SETTINGS,
+  NOTE_SPEED_LEVEL,
   PLAYBACK_SETTING_LIMITS,
+  noteSpeedFromLevel,
+  noteSpeedToLevel,
   normalizePlaybackSettings,
 } from "@/config/playback";
 import { useMidiVisualization } from "@/context/useMidiVisualization";
+import { cn } from "@/utils/cn";
 
 interface SettingsDraft {
   visualOffsetMs: string;
-  noteScrollSpeed: string;
+  noteSpeedLevel: string;
   showNoteLabels: boolean;
 }
 
@@ -19,9 +29,28 @@ const toDraft = (
   settings: typeof DEFAULT_PLAYBACK_SETTINGS,
 ): SettingsDraft => ({
   visualOffsetMs: String(settings.visualOffsetMs),
-  noteScrollSpeed: String(settings.noteScrollSpeed),
+  noteSpeedLevel: String(noteSpeedToLevel(settings.noteScrollSpeed)),
   showNoteLabels: settings.showNoteLabels,
 });
+
+const NUMBER_INPUT_CLASSNAME =
+  "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+const STEP_BUTTON_CLASSNAME =
+  "flex cursor-pointer items-center justify-center text-text-muted transition-colors duration-200 hover:bg-surface-sunken hover:text-text disabled:pointer-events-none disabled:text-disabled-fg";
+
+const StepButton = ({
+  children,
+  className,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+  <button
+    type="button"
+    {...props}
+    className={cn(STEP_BUTTON_CLASSNAME, className)}
+  >
+    {children}
+  </button>
+);
 
 export default function PlaybackSettings() {
   const { playbackSettings, savePlaybackSettings, playbackState } =
@@ -30,19 +59,36 @@ export default function PlaybackSettings() {
   const [saved, setSaved] = useState(false);
 
   const normalizedDraft = useMemo(
-    () => normalizePlaybackSettings(draft),
+    () =>
+      normalizePlaybackSettings({
+        ...draft,
+        noteScrollSpeed: noteSpeedFromLevel(draft.noteSpeedLevel),
+      }),
     [draft],
   );
   const savedDraft = toDraft(playbackSettings);
   const hasChanges =
     draft.visualOffsetMs !== savedDraft.visualOffsetMs ||
-    draft.noteScrollSpeed !== savedDraft.noteScrollSpeed ||
+    draft.noteSpeedLevel !== savedDraft.noteSpeedLevel ||
     draft.showNoteLabels !== savedDraft.showNoteLabels;
+  const speedLevel = noteSpeedToLevel(normalizedDraft.noteScrollSpeed);
 
   const updateDraft = (next: Partial<SettingsDraft>) => {
     setDraft((current) => ({ ...current, ...next }));
     setSaved(false);
   };
+
+  const stepOffset = (delta: number) => {
+    const { min, max } = PLAYBACK_SETTING_LIMITS.visualOffsetMs;
+    updateDraft({
+      visualOffsetMs: String(
+        Math.min(max, Math.max(min, normalizedDraft.visualOffsetMs + delta)),
+      ),
+    });
+  };
+
+  const stepSpeed = (delta: number) =>
+    updateDraft({ noteSpeedLevel: String(speedLevel + delta) });
 
   const save = () => {
     savePlaybackSettings(normalizedDraft);
@@ -59,9 +105,9 @@ export default function PlaybackSettings() {
               htmlFor="visual-offset"
               className="text-sm font-medium text-text"
             >
-              Visual offset
+              Visual offset (ms)
             </label>
-            <div className="flex w-28 items-center gap-1.5">
+            <div className="group relative w-28">
               <Input
                 id="visual-offset"
                 type="number"
@@ -74,11 +120,39 @@ export default function PlaybackSettings() {
                   updateDraft({ visualOffsetMs: event.target.value })
                 }
                 aria-describedby="visual-offset-help"
-                className="px-2 py-1.5 text-right font-mono"
+                className={cn(
+                  "py-1.5 text-center font-mono",
+                  NUMBER_INPUT_CLASSNAME,
+                )}
               />
-              <span className="w-7 shrink-0 text-right font-mono text-xs text-text-muted">
-                ms
-              </span>
+              <div className="absolute inset-y-px right-px flex w-6 flex-col overflow-hidden rounded-r-md border-l border-border bg-surface-raised opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+                <StepButton
+                  aria-label="Increase visual offset"
+                  disabled={
+                    normalizedDraft.visualOffsetMs >=
+                    PLAYBACK_SETTING_LIMITS.visualOffsetMs.max
+                  }
+                  onClick={() =>
+                    stepOffset(PLAYBACK_SETTING_LIMITS.visualOffsetMs.step)
+                  }
+                  className="flex-1 border-b border-border"
+                >
+                  <ChevronUpIcon className="size-3" />
+                </StepButton>
+                <StepButton
+                  aria-label="Decrease visual offset"
+                  disabled={
+                    normalizedDraft.visualOffsetMs <=
+                    PLAYBACK_SETTING_LIMITS.visualOffsetMs.min
+                  }
+                  onClick={() =>
+                    stepOffset(-PLAYBACK_SETTING_LIMITS.visualOffsetMs.step)
+                  }
+                  className="flex-1"
+                >
+                  <ChevronDownIcon className="size-3" />
+                </StepButton>
+              </div>
             </div>
           </div>
           <p id="visual-offset-help" className="mt-1.5 text-xs text-text-muted">
@@ -95,24 +169,39 @@ export default function PlaybackSettings() {
             >
               Note speed
             </label>
-            <div className="flex w-28 items-center gap-1.5">
+            <div className="flex w-28 items-center rounded-md border border-border shadow-xs transition-[border-color] duration-300 hover:border-border-strong focus-within:border-border-strong">
+              <StepButton
+                aria-label="Decrease note speed"
+                disabled={speedLevel <= NOTE_SPEED_LEVEL.min}
+                onClick={() => stepSpeed(-NOTE_SPEED_LEVEL.step)}
+                className="size-8 shrink-0 rounded-l-md"
+              >
+                <MinusIcon className="size-4" />
+              </StepButton>
               <Input
                 id="note-speed"
                 type="number"
                 inputMode="numeric"
-                min={PLAYBACK_SETTING_LIMITS.noteScrollSpeed.min}
-                max={PLAYBACK_SETTING_LIMITS.noteScrollSpeed.max}
-                step={PLAYBACK_SETTING_LIMITS.noteScrollSpeed.step}
-                value={draft.noteScrollSpeed}
+                min={NOTE_SPEED_LEVEL.min}
+                max={NOTE_SPEED_LEVEL.max}
+                step={NOTE_SPEED_LEVEL.step}
+                value={draft.noteSpeedLevel}
                 onChange={(event) =>
-                  updateDraft({ noteScrollSpeed: event.target.value })
+                  updateDraft({ noteSpeedLevel: event.target.value })
                 }
-                aria-describedby="note-speed-help"
-                className="px-2 py-1.5 text-right font-mono"
+                className={cn(
+                  "rounded-none border-none px-0 py-1.5 text-center font-mono shadow-none focus:shadow-none",
+                  NUMBER_INPUT_CLASSNAME,
+                )}
               />
-              <span className="w-7 shrink-0 text-right font-mono text-xs text-text-muted">
-                px/s
-              </span>
+              <StepButton
+                aria-label="Increase note speed"
+                disabled={speedLevel >= NOTE_SPEED_LEVEL.max}
+                onClick={() => stepSpeed(NOTE_SPEED_LEVEL.step)}
+                className="size-8 shrink-0 rounded-r-md"
+              >
+                <PlusIcon className="size-4" />
+              </StepButton>
             </div>
           </div>
         </div>

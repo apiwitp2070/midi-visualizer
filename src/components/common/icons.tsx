@@ -53,3 +53,27 @@ export const DownloadIcon = ({ className = "size-4" }: IconProps) => (
     />
   </svg>
 );
+
+export const ChevronUpIcon = ({ className = "size-4" }: IconProps) => (
+  <svg {...iconProps} className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m5 15 7-7 7 7" />
+  </svg>
+);
+
+export const ChevronDownIcon = ({ className = "size-4" }: IconProps) => (
+  <svg {...iconProps} className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+  </svg>
+);
+
+export const MinusIcon = ({ className = "size-4" }: IconProps) => (
+  <svg {...iconProps} className={className}>
+    <path strokeLinecap="round" d="M5 12h14" />
+  </svg>
+);
+
+export const PlusIcon = ({ className = "size-4" }: IconProps) => (
+  <svg {...iconProps} className={className}>
+    <path strokeLinecap="round" d="M12 5v14M5 12h14" />
+  </svg>
+);

@@ -33,12 +33,10 @@ describe("playback settings", () => {
       }),
     ).toEqual({
       visualOffsetMs: 500,
-      noteScrollSpeed: 80,
+      noteScrollSpeed: 40,
       showNoteLabels: false,
     });
-    expect(normalizePlaybackSettings(null)).toEqual(
-      DEFAULT_PLAYBACK_SETTINGS,
-    );
+    expect(normalizePlaybackSettings(null)).toEqual(DEFAULT_PLAYBACK_SETTINGS);
   });
 
   it("applies only on Save, persists values, and stops active playback", () => {
@@ -49,12 +47,16 @@ describe("playback settings", () => {
       </MidiVisualizerProvider>,
     );
 
-    fireEvent.change(screen.getByLabelText("Visual offset"), {
+    fireEvent.change(screen.getByLabelText("Visual offset (ms)"), {
       target: { value: "120" },
     });
     fireEvent.change(screen.getByLabelText("Note speed"), {
-      target: { value: "300" },
+      target: { value: "8" },
     });
+    fireEvent.click(screen.getByLabelText("Increase visual offset"));
+    expect(screen.getByLabelText("Visual offset (ms)")).toHaveValue(130);
+    fireEvent.click(screen.getByLabelText("Decrease note speed"));
+    expect(screen.getByLabelText("Note speed")).toHaveValue(7);
     fireEvent.click(screen.getByLabelText("Show note labels"));
 
     expect(screen.getByTestId("settings")).toHaveTextContent(
@@ -66,8 +68,8 @@ describe("playback settings", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save & stop" }));
 
     const expected = {
-      visualOffsetMs: 120,
-      noteScrollSpeed: 300,
+      visualOffsetMs: 130,
+      noteScrollSpeed: 280,
       showNoteLabels: false,
     };
     expect(screen.getByTestId("settings")).toHaveTextContent(

@@ -38,7 +38,11 @@ export default function ThemeToggle() {
   return (
     <button
       type="button"
-      onClick={toggleTheme}
+      onClick={(event) => {
+        const { left, top, width, height } =
+          event.currentTarget.getBoundingClientRect();
+        toggleTheme({ x: left + width / 2, y: top + height / 2 });
+      }}
       // The icon shows the theme a click will switch *to*, so the label names
       // that same destination rather than the current state.
       aria-label={`Switch to ${nextTheme} mode`}
@@ -47,7 +51,7 @@ export default function ThemeToggle() {
         "flex items-center justify-center rounded-md p-1.5 cursor-pointer",
         "border border-border text-text-muted transition-colors",
         "hover:bg-surface-sunken hover:text-text",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
       )}
     >
       {theme === "dark" ? <SunIcon /> : <MoonIcon />}
