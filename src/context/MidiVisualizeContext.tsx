@@ -33,9 +33,8 @@ export const MidiVisualizerProvider = ({
   const [noteOffStack, setNoteOffStack] = useState<NoteScoring[]>([]);
   const [score, setScore] = useState<ScoreResult | null>(null);
   const [latestPLayedNotes, setLatestPlayedNotes] = useState<NoteScore[]>();
-  const [playbackSettings, setPlaybackSettings] = useState(
-    loadPlaybackSettings,
-  );
+  const [playbackSettings, setPlaybackSettings] =
+    useState(loadPlaybackSettings);
 
   // MIDI player
   const [playbackState, setPlaybackState] = useState<PlaybackState>({
@@ -63,10 +62,13 @@ export const MidiVisualizerProvider = ({
 
   const setOriginalMidi = useCallback<
     React.Dispatch<React.SetStateAction<Midi | null>>
-  >((action) => {
-    stopPlayback();
-    setOriginalMidiState(action);
-  }, [stopPlayback]);
+  >(
+    (action) => {
+      stopPlayback();
+      setOriginalMidiState(action);
+    },
+    [stopPlayback],
+  );
 
   const midiNotes = useMemo(() => {
     return (

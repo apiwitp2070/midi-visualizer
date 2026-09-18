@@ -46,7 +46,7 @@ export default function MidiRecord() {
         : leadInSeconds * 1000 + playbackSettings.visualOffsetMs;
       noteOnStack.forEach((note) => {
         const offNote = noteOffStack.find(
-          (off) => off.midi === note.midi && !off.checked
+          (off) => off.midi === note.midi && !off.checked,
         );
 
         if (offNote) {
@@ -116,7 +116,7 @@ export default function MidiRecord() {
             !note.checked &&
             note.midi === curr.midi &&
             curr.time - 0.5 < note.time &&
-            note.time < curr.time + 0.5
+            note.time < curr.time + 0.5,
         );
 
         if (playedNote) {
@@ -209,7 +209,9 @@ export default function MidiRecord() {
         </div>
       </Accordion>
 
-      {score && <ScoreCard score={score} max={maxScore} notes={latestPLayedNotes} />}
+      {score && (
+        <ScoreCard score={score} max={maxScore} notes={latestPLayedNotes} />
+      )}
 
       <Accordion id="sc-rec" title="Record and export">
         <div className="flex flex-col gap-2">

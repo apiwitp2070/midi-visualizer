@@ -10,6 +10,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest run",
     "preview": "vite preview"
   },
@@ -36,6 +38,7 @@
     "eslint-plugin-react-refresh": "0.5.4",
     "globals": "^17.9.0",
     "jsdom": "^30.0.1",
+    "prettier": "^3.9.8",
     "tailwindcss": "4.3.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "8.67.0",

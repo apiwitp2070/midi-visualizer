@@ -52,7 +52,7 @@ export const MidiMessageProvider = ({
           if ((currentNotesMidi || []).includes(note)) {
             const nextNotes = getNextNotes(
               currentNotes.at(-1)?.[0].time,
-              firstTrackNotes
+              firstTrackNotes,
             );
 
             if (noteOff && noteOn) {
@@ -83,7 +83,7 @@ export const MidiMessageProvider = ({
       firstTrackNotes,
       noteOff,
       noteOn,
-    ]
+    ],
   );
 
   useEffect(() => {
@@ -95,13 +95,8 @@ export const MidiMessageProvider = ({
 
   // helper function
 
-  return (
-    <MidiMessageContext value={undefined}>
-      {children}
-    </MidiMessageContext>
-  );
+  return <MidiMessageContext value={undefined}>{children}</MidiMessageContext>;
 };
-
 
 // helper
 

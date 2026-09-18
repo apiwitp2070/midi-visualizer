@@ -12,7 +12,7 @@ import type { Theme } from "@/context/ThemeContextValue";
 /** One hue per pitch class, indexed by `midi % 12`. */
 const NOTE_TOKENS = Array.from(
   { length: 12 },
-  (_, index) => `--color-note-${index}`
+  (_, index) => `--color-note-${index}`,
 );
 
 const CANVAS_TOKENS = {
@@ -82,7 +82,7 @@ export const readThemeColors = (theme: Theme): ThemeColors => {
       console.warn(
         `[themeColors] Reading tokens for "${theme}" but <html> is ` +
           `"${domIsDark ? "dark" : "light"}". The theme class must be applied ` +
-          `before colors are resolved, or the canvas will use stale values.`
+          `before colors are resolved, or the canvas will use stale values.`,
       );
     }
   }
@@ -98,13 +98,13 @@ export const readThemeColors = (theme: Theme): ThemeColors => {
     Object.entries(CANVAS_TOKENS).map(([key, token]) => [
       key,
       read(token, FALLBACKS[key as keyof typeof CANVAS_TOKENS]),
-    ])
+    ]),
   ) as Record<keyof typeof CANVAS_TOKENS, string>;
 
   return {
     ...resolved,
     notes: NOTE_TOKENS.map((token, index) =>
-      read(token, FALLBACKS.notes[index])
+      read(token, FALLBACKS.notes[index]),
     ),
   };
 };

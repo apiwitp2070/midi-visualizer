@@ -26,8 +26,7 @@ export const getVisualSongTime = (
   clock: AudioClock,
   originAudioTime: number,
   visualOffsetMs: number,
-) =>
-  getAudioOutputTime(clock) - originAudioTime - visualOffsetMs / 1000;
+) => getAudioOutputTime(clock) - originAudioTime - visualOffsetMs / 1000;
 
 export const audioTimeToPerformanceTime = (
   clock: AudioClock,
@@ -38,8 +37,7 @@ export const audioTimeToPerformanceTime = (
     const timestamp = clock.getOutputTimestamp?.();
     if (timestamp && validTimestamp(timestamp)) {
       return (
-        timestamp.performanceTime! +
-        (audioTime - timestamp.contextTime!) * 1000
+        timestamp.performanceTime! + (audioTime - timestamp.contextTime!) * 1000
       );
     }
   } catch {

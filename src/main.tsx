@@ -33,5 +33,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         </AudioEngineProvider>
       </MIDIProvider>
     </ThemeProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

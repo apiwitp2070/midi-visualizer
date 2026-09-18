@@ -105,9 +105,7 @@ const MidiVisualizer = () => {
 
   // Feeds the shared transport lead-in. It is the distance from the stage top
   // to the playhead, measured in the same pixels used by the draw loop.
-  const travelDistance = stageHeight
-    ? stageHeight - config.playheadInset
-    : 0;
+  const travelDistance = stageHeight ? stageHeight - config.playheadInset : 0;
 
   useEffect(() => {
     if (travelDistance > 0) setTravelDistance(travelDistance);
@@ -555,11 +553,29 @@ function drawKeyboard(
   // White keys first so the black keys paint over their seams.
   layout.keys.forEach((key) => {
     if (key.isBlack) return;
-    drawKey(ctx, key, colors, active, currentTime, depth, labelable, reducedMotion);
+    drawKey(
+      ctx,
+      key,
+      colors,
+      active,
+      currentTime,
+      depth,
+      labelable,
+      reducedMotion,
+    );
   });
   layout.keys.forEach((key) => {
     if (!key.isBlack) return;
-    drawKey(ctx, key, colors, active, currentTime, depth, labelable, reducedMotion);
+    drawKey(
+      ctx,
+      key,
+      colors,
+      active,
+      currentTime,
+      depth,
+      labelable,
+      reducedMotion,
+    );
   });
 
   // The strip's top edge, matching the border the DOM keyboard used to carry.

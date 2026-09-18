@@ -23,8 +23,8 @@ const UploadProbe = () => {
 describe("useMidiUpload", () => {
   it("loads a valid MIDI file with no tempo event", async () => {
     const bytes = new Uint8Array([
-      0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, 0, 96,
-      0x4d, 0x54, 0x72, 0x6b, 0, 0, 0, 4, 0, 0xff, 0x2f, 0,
+      0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, 0, 96, 0x4d, 0x54, 0x72,
+      0x6b, 0, 0, 0, 4, 0, 0xff, 0x2f, 0,
     ]);
     const file = {
       name: "no-tempo.mid",

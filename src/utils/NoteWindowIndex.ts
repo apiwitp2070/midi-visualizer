@@ -45,8 +45,7 @@ export class NoteWindowIndex<T extends TimedNote> {
     // has passed them.
     while (
       this.endCursor < this.byEnd.length &&
-      this.byEnd[this.endCursor].time +
-        this.byEnd[this.endCursor].duration <
+      this.byEnd[this.endCursor].time + this.byEnd[this.endCursor].duration <
         songTime
     ) {
       this.current.delete(this.byEnd[this.endCursor]);

@@ -36,8 +36,7 @@ export const AudioEngineProvider = ({
   const preparationRef = useRef<Promise<void> | null>(null);
   const mountedRef = useRef(true);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [piano, setPiano] =
-    useState<SplendidGrandPianoInstrument | null>(null);
+  const [piano, setPiano] = useState<SplendidGrandPianoInstrument | null>(null);
   const [status, setStatus] = useState<AudioEngineStatus>("idle");
   const [error, setError] = useState<Error | null>(null);
   const [loadProgress, setLoadProgress] = useState<{
@@ -128,10 +127,7 @@ export const AudioEngineProvider = ({
     }
   }, []);
 
-  const prepare = useCallback(
-    () => prepareEngine(false),
-    [prepareEngine],
-  );
+  const prepare = useCallback(() => prepareEngine(false), [prepareEngine]);
   const retry = useCallback(() => prepareEngine(true), [prepareEngine]);
 
   const resume = useCallback(async () => {
@@ -176,7 +172,5 @@ export const AudioEngineProvider = ({
     [audioContext, error, loadProgress, piano, prepare, resume, retry, status],
   );
 
-  return (
-    <AudioEngineContext value={value}>{children}</AudioEngineContext>
-  );
+  return <AudioEngineContext value={value}>{children}</AudioEngineContext>;
 };
